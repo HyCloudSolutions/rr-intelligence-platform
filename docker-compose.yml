@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: rr_admin
+      POSTGRES_PASSWORD: local_password
+      POSTGRES_DB: rr_intelligence
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U rr_admin -d rr_intelligence" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Mock AWS Services (S3, Cognito, EventBridge)
+  localstack:
+    image: localstack/localstack
+    ports:
+      - "4566:4566"
+    environment:
+      - SERVICES=cognito-idp,s3,events
+      - DEBUG=${DEBUG:-0}
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./backend:/app
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://rr_admin:local_password@db:5432/rr_intelligence
+      - COGNITO_USER_POOL_ID=us-east-1_mockpool
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules # Prevent host node_modules from overwriting container's
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - NEXTAUTH_URL=http://localhost:3000
+      - NEXTAUTH_SECRET=local_e2e_secret_do_not_use_in_prod
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:

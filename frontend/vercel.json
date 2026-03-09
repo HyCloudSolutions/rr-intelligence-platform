@@ -1,0 +1,31 @@
+{
+    "framework": "nextjs",
+    "buildCommand": "npm run build",
+    "installCommand": "npm install --legacy-peer-deps",
+    "outputDirectory": ".next",
+    "regions": [
+        "iad1"
+    ],
+    "env": {
+        "NEXT_PUBLIC_INTERNAL_API_URL": "http://restaurantrisk-prod-alb-223501911.us-east-1.elb.amazonaws.com"
+    },
+    "headers": [
+        {
+            "source": "/(.*)",
+            "headers": [
+                {
+                    "key": "X-Content-Type-Options",
+                    "value": "nosniff"
+                },
+                {
+                    "key": "X-Frame-Options",
+                    "value": "DENY"
+                },
+                {
+                    "key": "X-XSS-Protection",
+                    "value": "1; mode=block"
+                }
+            ]
+        }
+    ]
+}

@@ -82,6 +82,12 @@
   Fill them out with the right functional requirements.
 -->
 
+### Constitution Mandates (Required for all features)
+
+- **C-001**: Data MUST be strictly isolated per county/municipality within this feature.
+- **C-002**: Any ML/AI outputs MUST provide actionable, plain-language explainability (no black boxes).
+- **C-003**: New services/resources MUST be fully defined in Terraform (`terraform/` directory) and avoid custom, stateful infrastructure (prefer ECS Fargate, Vercel, RDS, Serverless).
+
 ### Functional Requirements
 
 - **FR-001**: System MUST [specific capability, e.g., "allow users to create accounts"]

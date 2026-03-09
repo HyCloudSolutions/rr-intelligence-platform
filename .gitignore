@@ -1,0 +1,36 @@
+# Environment
+.env
+.env.local
+.env.production
+.env.development
+*.env
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Node
+node_modules/
+.next/
+dist/
+build/
+
+# Infrastructure
+.terraform/
+*.tfstate
+*.tfstate.backup
+.terraform.lock.hcl
+
+# OS / Tools
+.DS_Store
+.vscode/
+.idea/
+
+# Large data / Logs
+*.csv
+*.log
+*.db
+backend_logs.txt
+test_ingestion.csv

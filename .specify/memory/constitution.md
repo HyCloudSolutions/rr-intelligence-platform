@@ -1,50 +1,49 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+<!--
+Sync Impact Report:
+- Version change: 1.0.0 -> 1.0.1
+- List of modified principles:
+  - Template 1 -> I. Predictive, Not Reactive
+  - Template 2 -> II. Explainable AI (Transparency)
+  - Template 3 -> III. Tenant Isolation & Security First
+  - Template 4 -> IV. Cloud-Native & Managed Service
+  - Template 5 -> V. Infrastructure as Code (IaC)
+- Added sections: Data Layer & ML Standards, Development & Workflow
+- Removed sections: N/A
+- Templates requiring updates (✅ updated):
+  - .specify/templates/plan-template.md ✅ updated
+  - .specify/templates/spec-template.md ✅ updated
+  - .specify/templates/tasks-template.md ✅ updated
+-->
+
+# RestaurantRisk Intelligence Platform Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. Predictive, Not Reactive
+Risk scores MUST be computed proactively using machine learning models to provide field inspectors with a prioritized daily queue, rather than scheduling based on fixed calendars or reacting solely to complaints.
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+### II. Explainable AI (Transparency)
+Every prediction surfaced to the user MUST include actionable, plain-language explainability (e.g., top 3 contributing factors via Captum). The machine learning scoring methodology MUST NOT operate as an opaque black box to health department staff.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+### III. Tenant Isolation & Security First
+All data MUST be strictly isolated per tenant (county/municipality). Cross-tenant data access is strictly prohibited. Security and privacy of inspection rules, historical data, and outcomes MUST be governed by robust authentication (e.g., AWS Cognito) and row-level tenant filters in the database.
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+### IV. Cloud-Native & Managed Service
+The platform MUST impose zero infrastructure management burden on the tenant. Solutions MUST aggressively leverage managed, stateless cloud infrastructure (e.g., AWS ECS Fargate, Vercel, RDS, Serverless EventBridge) to ensure effortless scalability, high availability, and straightforward multi-tenant hosting.
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### V. Infrastructure as Code (IaC)
+All infrastructure and service provisioning MUST be defined and deployed through code (Terraform). Manual console changes in any environment (Dev, Staging, or Prod) are strictly disallowed to maintain reproducible and auditable setups.
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+## Data Layer & ML Standards
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+Input data (inspections, licenses, complaints) MUST uniformly process through an automated ETL pipeline ensuring idempotent updates. Preprocessing and feature engineering logic MUST be shared exactly between training and production inference. The ML Layer MUST utilize **PyTorch** for tabular modeling and **MLflow** for experiment/model tracking. Production machine learning models MUST maintain defined performance minimums (e.g., AUC-ROC >= 0.70) and alert on data drift or performance degradation via CloudWatch. Nightly batch scoring MUST be favored over real-time inference to reduce infrastructure complexity.
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+## Development & Workflow
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+The platform maintains a decoupled architecture: a **Next.js 14 (App Router)** frontend utilizing `shadcn/ui`, `Tailwind CSS`, and `Tremor` for dashboards, and a stateless **FastAPI (Python)** backend hosted on AWS ECS Fargate. All new features MUST fulfill CI/CD requirements (e.g., GitHub Actions, Vercel deployments), including automated testing, linter checks, and deployment staging gates before promotion to production. Code reviews MUST evaluate changes against architectural principles and emphasize minimal long-term maintenance overhead.
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+This Constitution supersedes all ad-hoc development practices. Any structural alteration to tenant isolation, ML explainability, or IaC workflows MUST be documented, reviewed, and approved via pull requests updating this file. Role-based access constraints (e.g., `inspector` vs `director`) and tenant data retention policies (default 7 years) MUST be strictly upheld. No PR highlighting a violation of these Core Principles may be merged.
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+**Version**: 1.0.1 | **Ratified**: 2026-03-05 | **Last Amended**: 2026-03-05

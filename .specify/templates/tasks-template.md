@@ -62,12 +62,13 @@ description: "Task list template for feature implementation"
 
 Examples of foundational tasks (adjust based on your project):
 
-- [ ] T004 Setup database schema and migrations framework
-- [ ] T005 [P] Implement authentication/authorization framework
-- [ ] T006 [P] Setup API routing and middleware structure
-- [ ] T007 Create base models/entities that all stories depend on
-- [ ] T008 Configure error handling and logging infrastructure
-- [ ] T009 Setup environment configuration management
+- [ ] T004 Define and apply necessary infrastructure via Terraform modules (`terraform/`)
+- [ ] T005 Setup database schema and migrations framework supporting tenant-isolation
+- [ ] T006 [P] Implement authentication framework (AWS Cognito) and tenant context extraction
+- [ ] T007 [P] Setup API routing, tenant middleware, and endpoint structure
+- [ ] T008 Create base models/entities that all stories depend on
+- [ ] T009 Configure error handling and telemetry/logging infrastructure
+- [ ] T010 Setup environment configuration management
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 
