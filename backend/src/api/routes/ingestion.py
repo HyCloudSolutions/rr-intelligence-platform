@@ -38,9 +38,9 @@ def process_csv_background(file_path: str, tenant_id: str):
     try:
         for index, row in df.iterrows():
             try:
-                lic_id = str(row.get("LICENSE_ID", "")).strip()
+                # San Francisco uses 'business_id', Chicago uses 'LICENSE_ID' or 'License #'
+                lic_id = str(row.get("business_id", row.get("LICENSE_ID", ""))).strip()
                 if not lic_id or lic_id == "nan":
-                    # Try alternate column names like 'License #'
                     lic_id = str(row.get("License #", "")).strip()
                     if not lic_id or lic_id == "nan":
                         continue
@@ -52,16 +52,17 @@ def process_csv_background(file_path: str, tenant_id: str):
                 elif "Mobile" in fac_type_str or "Truck" in fac_type_str:
                     fac_type_enum = FacilityType.MOBILE
 
-                risk_str = str(row.get("BASELINE_RISK", row.get("Risk", "Medium")))
+                # SF uses 'risk_category' (e.g. 'Low Risk', 'High Risk')
+                risk_str = str(row.get("risk_category", row.get("BASELINE_RISK", row.get("Risk", "Medium"))))
                 risk_enum = RiskCategory.MEDIUM
                 if "High" in risk_str or "Risk 1" in risk_str:
                     risk_enum = RiskCategory.HIGH
                 elif "Low" in risk_str or "Risk 3" in risk_str:
                     risk_enum = RiskCategory.LOW
 
-                name = str(row.get("NAME", row.get("DBA Name", "Unknown Name")))
-                address = str(row.get("ADDRESS", row.get("Address", "Unknown Address")))
-                zip_code = str(row.get("ZIP", row.get("Zip", "")))
+                name = str(row.get("business_name", row.get("NAME", row.get("DBA Name", "Unknown Name"))))
+                address = str(row.get("business_address", row.get("ADDRESS", row.get("Address", "Unknown Address"))))
+                zip_code = str(row.get("business_postal_code", row.get("ZIP", row.get("Zip", ""))))
 
                 existing = (
                     db.query(Establishment)

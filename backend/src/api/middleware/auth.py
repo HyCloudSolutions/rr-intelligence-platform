@@ -100,11 +100,28 @@ def get_current_tenant_id(
     """
     Validates the JWT and extracts the custom 'custom:tenant_id' claim.
     This is CRITICAL for the tenant isolation Constitution mandate.
+    Handles both real Cognito JWTs and synthetic mock tokens.
     """
     token = credentials.credentials
     claims = _decode_mock_token(token)
 
+    # First try the custom attribute directly (mock tokens & Cognito ID tokens)
     tenant_id = claims.get("custom:tenant_id")
+    
+    # If not found, try to extract from tenant-scoped group name (e.g. Tenant_{uuid}_Director)
+    if not tenant_id:
+        groups = claims.get("cognito:groups", [])
+        for group in groups:
+            parts = group.split("_")
+            # Group format: Tenant_{uuid-part1}-{uuid-rest}_Role
+            # Reconstruct UUID from group name: Tenant_<uuid>_Director
+            if group.lower().startswith("tenant_") and len(parts) >= 3:
+                # Everything between 'Tenant_' and the last '_Role' part is the UUID
+                uuid_str = "_".join(parts[1:-1])
+                if len(uuid_str) == 36:  # Valid UUID length
+                    tenant_id = uuid_str
+                    break
+
     if not tenant_id:
         raise HTTPException(
             status_code=403,
@@ -118,15 +135,20 @@ def get_current_user_role(
     credentials: HTTPAuthorizationCredentials = Security(security),
 ) -> str:
     """
-    Extracts the user role (e.g., 'inspector', 'director') from Cognito groups.
+    Extracts the user role from Cognito groups.
+    Handles both simple roles ('director') and tenant-scoped groups ('Tenant_{uuid}_Director').
     """
     token = credentials.credentials
     claims = _decode_mock_token(token)
     groups = claims.get("cognito:groups", [])
 
-    if "director" in groups:
+    # Case-insensitive substring match to handle 'Tenant_{UUID}_Director' and 'director'
+    groups_lower = " ".join(groups).lower()
+    if "superadmin" in groups_lower:
+        return "superadmin"
+    elif "director" in groups_lower:
         return "director"
-    elif "inspector" in groups:
+    elif "inspector" in groups_lower:
         return "inspector"
     else:
         raise HTTPException(

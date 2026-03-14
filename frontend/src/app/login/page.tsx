@@ -83,7 +83,7 @@ export default function LoginPage() {
                         <div className="space-y-4">
                             <div className="animate-fade-in delay-200">
                                 <label htmlFor="username" className="block text-sm font-medium text-blue-100/70 mb-1.5">
-                                    Username
+                                    Email or Username
                                 </label>
                                 <input
                                     id="username"
@@ -91,14 +91,14 @@ export default function LoginPage() {
                                     required
                                     value={username}
                                     onChange={(e) => setUsername(e.target.value)}
-                                    placeholder="inspector or director"
+                                    placeholder="sf_director@example.com or director"
                                     className="w-full px-4 py-2.5 bg-white/[0.06] border border-white/10 rounded-lg text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all font-medium"
                                 />
                             </div>
 
                             <div className="animate-fade-in delay-300">
                                 <label htmlFor="password" className="block text-sm font-medium text-blue-100/70 mb-1.5">
-                                    Password
+                                    Mock Password
                                 </label>
                                 <input
                                     id="password"

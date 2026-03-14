@@ -10,7 +10,7 @@ export default async function Home() {
   }
 
   if (session?.user?.role === 'superadmin') {
-    redirect('/superadmin');
+    redirect('/super-admin');
   } else if (session?.user?.role === 'director') {
     redirect('/director/dashboard');
   } else {

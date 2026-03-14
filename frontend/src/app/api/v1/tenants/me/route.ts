@@ -19,15 +19,11 @@ export async function GET(request: NextRequest) {
         const mockJwt = `mockheader.${payload}.mocksignature`;
         const authHeader = `Bearer ${mockJwt}`;
 
-        // Get the search query from the incoming request URL
-        const { searchParams } = new URL(request.url);
-        const query = searchParams.get('query');
-
         // Use INTERNAL_API_URL from environment or fallback
         const backendUrl = process.env.INTERNAL_API_URL || 'http://127.0.0.1:8000';
-        const searchUrl = `${backendUrl}/api/v1/establishments/search${query ? `?query=${encodeURIComponent(query)}` : ''}`;
+        const tenantUrl = `${backendUrl}/api/v1/tenants/me`;
 
-        const res = await fetch(searchUrl, {
+        const res = await fetch(tenantUrl, {
             headers: {
                 'Authorization': authHeader,
             },
@@ -36,9 +32,9 @@ export async function GET(request: NextRequest) {
         });
 
         if (!res.ok) {
-            console.error(`Backend returned ${res.status} for search`);
+            console.error(`Backend returned ${res.status} for tenant info`);
             return NextResponse.json(
-                { error: 'Failed to fetch establishments' },
+                { error: 'Failed to fetch tenant info' },
                 { status: res.status }
             );
         }
@@ -46,7 +42,7 @@ export async function GET(request: NextRequest) {
         const data = await res.json();
         return NextResponse.json(data);
     } catch (error) {
-        console.error('Establishment search error:', error);
+        console.error('Tenant info error:', error);
         return NextResponse.json(
             { error: 'Internal server error' },
             { status: 500 }

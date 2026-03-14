@@ -18,6 +18,24 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
+## Tenant Credentials
+
+Use these credentials to test different municipality environments:
+
+### 🏙️ San Francisco (Production Simulation)
+- **Role**: Director
+- **Login**: `sf_director@example.com`
+- **Password**: `TempPass123!`
+- **Scope**: Access to 53,000+ real SF establishments and compliance metrics.
+
+### 🍕 Chicago (Mock Environment)
+- **Role**: Director / Inspector
+- **Login**: `director` or `inspector`
+- **Password**: `any`
+- **Scope**: Localized mock data for rapid feature testing.
+
+---
+
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
 ## Learn More

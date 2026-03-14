@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
         const mockJwt = `mockheader.${payload}.mocksignature`;
         const authHeader = `Bearer ${mockJwt}`;
 
-        const backendUrl = 'http://backend:8000';
+        const backendUrl = process.env.INTERNAL_API_URL || 'http://127.0.0.1:8000';
         const historyUrl = `${backendUrl}/api/v1/inspections/history`;
         console.log("HISTORY PROXY Fetching URL:", historyUrl);
 

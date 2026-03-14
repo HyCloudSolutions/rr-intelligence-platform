@@ -3,7 +3,19 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+
+const superAdminLinks = [
+    {
+        href: '/super-admin',
+        label: 'Control Plane',
+        icon: (
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.83-5.83m0 0l2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" />
+            </svg>
+        ),
+    }
+];
 
 const directorLinks = [
     {
@@ -105,6 +117,22 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     const { data: session, status } = useSession();
     const pathname = usePathname();
     const [collapsed, setCollapsed] = useState(false);
+    const [tenantName, setTenantName] = useState<string>('');
+
+    // Fetch tenant name
+    useEffect(() => {
+        if (status === 'authenticated' && session?.accessToken) {
+            const apiUrl = process.env.NEXT_PUBLIC_INTERNAL_API_URL || 'http://localhost:8000';
+            fetch(`${apiUrl}/api/v1/tenants/me`, {
+                headers: { Authorization: `Bearer ${session.accessToken}` }
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.name) setTenantName(data.name);
+            })
+            .catch(err => console.error("Failed to fetch tenant name", err));
+        }
+    }, [status, session]);
 
     // Don't show sidebar on login page or while loading
     if (status === 'loading' || !session || pathname === '/login') {
@@ -112,8 +140,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     }
 
     const role = session.user?.role as string;
-    const links = role === 'director' ? directorLinks : inspectorLinks;
-    const displayName = role === 'director' ? 'Director' : 'Inspector';
+    let links = inspectorLinks;
+    let displayName = 'Inspector';
+
+    if (role === 'superadmin') {
+        links = superAdminLinks;
+        displayName = 'Platform Admin';
+    } else if (role === 'director') {
+        links = directorLinks;
+        displayName = 'Director';
+    }
 
     return (
         <div className="flex min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 pb-16 md:pb-0">
@@ -136,6 +172,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         </div>
                     )}
                 </div>
+
+                {/* Tenant Identity Section */}
+                {!collapsed && (
+                    <div className="px-4 py-3 bg-slate-50/50 border-b border-slate-100">
+                        <div className="flex items-center gap-2">
+                             <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+                             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                {role === 'superadmin' ? 'Global Context' : 'Active Tenant'}
+                             </span>
+                        </div>
+                        <h2 className="text-sm font-extrabold text-blue-900 mt-1 truncate group-hover:text-blue-600 transition-colors">
+                            {role === 'superadmin' ? 'System Orchestrator' : (tenantName || 'Standard Context')}
+                        </h2>
+                    </div>
+                )}
 
                 {/* Nav Links */}
                 <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
@@ -221,17 +272,25 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <main className={`flex-1 transition-all duration-300 w-full max-w-full overflow-x-hidden md:w-auto ${collapsed ? 'md:ml-[68px]' : 'md:ml-60'}`}>
                 {/* Mobile Header (Only visible on small screens) */}
                 <div className="md:hidden sticky top-0 z-30 flex items-center justify-between h-14 px-4 bg-white border-b border-slate-200">
-                    <div className="flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-md bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-sm flex-shrink-0">
-                            <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                    <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-8 h-8 rounded-md bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-sm flex-shrink-0">
+                            <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
                             </svg>
                         </div>
-                        <h1 className="text-sm font-bold text-slate-900">RestaurantRisk</h1>
+                        <div className="min-w-0">
+                            <h1 className="text-xs font-bold text-slate-400 uppercase tracking-tighter mb-0.5">RestaurantRisk</h1>
+                            {tenantName && (
+                                <div className="flex items-center gap-1.5 min-w-0">
+                                    <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse flex-shrink-0"></div>
+                                    <h2 className="text-sm font-extrabold text-blue-900 truncate tracking-tight">{tenantName}</h2>
+                                </div>
+                            )}
+                        </div>
                     </div>
                     <button
                         onClick={() => signOut({ callbackUrl: '/login' })}
-                        className="text-xs font-medium text-slate-500 hover:text-slate-900 bg-slate-100 flex items-center justify-center w-8 h-8 rounded-full"
+                        className="text-xs font-medium text-white bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center w-8 h-8 rounded-full shadow-sm ring-2 ring-white"
                     >
                         {displayName.charAt(0)}
                     </button>
