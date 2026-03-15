@@ -19,6 +19,7 @@ class TenantCreate(BaseModel):
     name: str # e.g. "Seattle Public Health"
     contact_email: EmailStr
     tier: str = "Standard"
+    director_password: str
 
 class TenantResponse(BaseModel):
     id: str
@@ -102,8 +103,15 @@ def provision_tenant(
                     {'Name': 'email_verified', 'Value': 'true'},
                     {'Name': 'custom:tenant_id', 'Value': tenant_id_str}
                 ],
-                TemporaryPassword="TempPass123!",
                 MessageAction='SUPPRESS'
+            )
+            
+            # 2.5 Set permanent password immediately
+            cognito_client.admin_set_user_password(
+                UserPoolId=COGNITO_USER_POOL_ID,
+                Username=tenant_in.contact_email,
+                Password=tenant_in.director_password,
+                Permanent=True
             )
             
             # Assign to Director Group

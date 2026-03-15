@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from src.api.routes import queue, inspections, dashboard, establishments, ingestion, tenants
+from src.api.routes import queue, inspections, dashboard, establishments, ingestion, tenants, users
 
 app = FastAPI(title="RestaurantRisk Intelligence API")
 
@@ -26,3 +26,4 @@ app.include_router(dashboard.router)
 app.include_router(establishments.router)
 app.include_router(ingestion.router)
 app.include_router(tenants.router)
+app.include_router(users.router)

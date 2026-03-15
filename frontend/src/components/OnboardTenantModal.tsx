@@ -12,6 +12,7 @@ interface OnboardTenantModalProps {
 export default function OnboardTenantModal({ isOpen, onClose, onSuccess, accessToken }: OnboardTenantModalProps) {
     const [name, setName] = useState("");
     const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
     const [tier, setTier] = useState("Standard");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -34,7 +35,8 @@ export default function OnboardTenantModal({ isOpen, onClose, onSuccess, accessT
                 body: JSON.stringify({
                     name,
                     contact_email: email,
-                    tier
+                    tier,
+                    director_password: password
                 })
             });
 
@@ -89,6 +91,19 @@ export default function OnboardTenantModal({ isOpen, onClose, onSuccess, accessT
                                 onChange={(e) => setEmail(e.target.value)}
                                 className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder:text-slate-300 font-medium"
                                 placeholder="director@agency.gov"
+                            />
+                        </div>
+
+                        <div className="space-y-1">
+                            <label className="text-xs font-bold text-slate-500 uppercase tracking-widest pl-1">Admin Password</label>
+                            <input
+                                required
+                                type="password"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder:text-slate-300 font-medium"
+                                placeholder="Strong password"
+                                minLength={8}
                             />
                         </div>
 

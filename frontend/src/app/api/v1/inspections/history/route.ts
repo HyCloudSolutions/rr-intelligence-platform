@@ -12,12 +12,16 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const payload = Buffer.from(JSON.stringify({
-            "custom:tenant_id": token.tenant_id,
-            "cognito:groups": [token.role || "inspector"]
-        })).toString('base64');
-        const mockJwt = `mockheader.${payload}.mocksignature`;
-        const authHeader = `Bearer ${mockJwt}`;
+        let authHeader = `Bearer ${token.accessToken}`;
+        
+        if (!token.cognitoAccessToken) {
+            const payload = Buffer.from(JSON.stringify({
+                "custom:tenant_id": token.tenant_id,
+                "cognito:groups": [token.role || "inspector"]
+            })).toString('base64');
+            const mockJwt = `mockheader.${payload}.mocksignature`;
+            authHeader = `Bearer ${mockJwt}`;
+        }
 
         const backendUrl = process.env.INTERNAL_API_URL || 'http://127.0.0.1:8000';
         const historyUrl = `${backendUrl}/api/v1/inspections/history`;
