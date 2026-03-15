@@ -35,9 +35,13 @@ def log_inspection_outcome(
         raise HTTPException(status_code=403, detail="Not authorized to log inspections.")
 
     # 2. Validate establishment exists and belongs to tenant
+    import uuid
+    tenant_uuid = uuid.UUID(tenant_id)
+    est_uuid = uuid.UUID(payload.establishment_id)
+    
     est = db.query(Establishment).filter(
-        Establishment.id == payload.establishment_id,
-        Establishment.tenant_id == tenant_id
+        Establishment.id == est_uuid,
+        Establishment.tenant_id == tenant_uuid
     ).first()
 
     if not est:
@@ -54,9 +58,9 @@ def log_inspection_outcome(
     default_inspector_id = "00000000-0000-0000-0000-000000000001"
     
     new_inspection = InspectionResult(
-        tenant_id=tenant_id,
+        tenant_id=tenant_uuid,
         establishment_id=est.id,
-        inspector_id=default_inspector_id,
+        inspector_id=uuid.UUID(default_inspector_id),
         inspection_date=datetime.utcnow().date(),
         inspection_type=InspectionType.CANVAS,  # Defaulting to Canvas (routine) for MVP
         result=outcome_enum,

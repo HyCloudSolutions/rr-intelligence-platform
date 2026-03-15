@@ -11,8 +11,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the entire source tree into the container
 COPY . .
 
-# Expose the API port
+# Expose the port the app runs on
 EXPOSE 8000
 
-# Run uvicorn without --reload for production
+# Expose the port the app runs on
+EXPOSE 8000
+
+# Start the server
 CMD ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000"]

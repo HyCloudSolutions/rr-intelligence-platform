@@ -45,7 +45,7 @@ export default function SuperAdminDashboard() {
 
     const fetchTenants = async () => {
         try {
-            const apiUrl = process.env.NEXT_PUBLIC_INTERNAL_API_URL || 'http://localhost:8000';
+            const apiUrl = typeof window !== 'undefined' ? (process.env.NEXT_PUBLIC_API_URL || '/api/backend') : (process.env.INTERNAL_API_URL || 'http://localhost:8000');
             const response = await fetch(`${apiUrl}/api/v1/tenants`, {
                 headers: {
                     Authorization: `Bearer ${(session as any).accessToken}`

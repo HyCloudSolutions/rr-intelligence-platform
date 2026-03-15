@@ -7,8 +7,10 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { useSession } from "next-auth/react";
 
-export default function IngestionPortal() {
+export default function IngestionPage() {
     const { data: session } = useSession();
+    
+    const apiUrl = typeof window !== 'undefined' ? (process.env.NEXT_PUBLIC_API_URL || '/api/backend') : (process.env.INTERNAL_API_URL || 'http://localhost:8000');
     const [file, setFile] = useState<File | null>(null);
     const [uploading, setUploading] = useState(false);
     const [success, setSuccess] = useState(false);
@@ -25,7 +27,7 @@ export default function IngestionPortal() {
         try {
             // In a real Vercel deployment, this calls the Next.js API route which proxies, or calls the ALB directly
             // For MVP local docker, we use the NEXT_PUBLIC exposed API URL or fallback to localhost
-            const apiUrl = process.env.NEXT_PUBLIC_INTERNAL_API_URL || 'http://localhost:8000';
+            const apiUrl = process.env.INTERNAL_API_URL || 'http://localhost:8000';
 
             const formData = new FormData();
             formData.append("file", file);

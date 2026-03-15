@@ -122,8 +122,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     // Fetch tenant name
     useEffect(() => {
         if (status === 'authenticated' && session?.accessToken) {
-            const apiUrl = process.env.NEXT_PUBLIC_INTERNAL_API_URL || 'http://localhost:8000';
-            fetch(`${apiUrl}/api/v1/tenants/me`, {
+            // Use relative path for NextJS proxy rewrite so browser handles origin automatically
+            fetch(`/api/v1/tenants/me`, {
                 headers: { Authorization: `Bearer ${session.accessToken}` }
             })
             .then(r => r.json())

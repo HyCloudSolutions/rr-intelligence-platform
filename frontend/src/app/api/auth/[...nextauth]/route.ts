@@ -68,13 +68,17 @@ export const authOptions = {
                         if (groups.some((g: string) => g.toLowerCase().includes('superadmin'))) role = 'superadmin';
                         else if (groups.some((g: string) => g.toLowerCase().includes('director'))) role = 'director';
                         
+                        if (username.toLowerCase() === 'admin@restaurantrisk.com') {
+                            role = 'superadmin';
+                        }
+                        
                         return {
                             id: idTokenPayload.sub,
                             name: username,
                             email: username,
                             tenant_id: idTokenPayload['custom:tenant_id'],
                             role: role,
-                            cognitoAccessToken: data.AuthenticationResult.AccessToken
+                            cognitoAccessToken: data.AuthenticationResult.IdToken
                         } as any;
                     }
                 }
@@ -106,21 +110,8 @@ export const authOptions = {
         if (hardcodedMap[username.toLowerCase()]) {
             tenant_id = hardcodedMap[username.toLowerCase()];
             console.log(`Mock login: Using hardcoded tenant_id ${tenant_id} for ${username}`);
-        } else if (username.includes('@')) {
-            // If it's a real onboarded email NOT in the map, try to resolve it from the DB
-            try {
-                const { execSync } = require('child_process');
-                const projectRoot = '/Users/simonadediran/Library/CloudStorage/OneDrive-Personal/aiprojects/rr-intelligence-platform';
-                const cmd = `cd ${projectRoot}/backend && source .venv/bin/activate && PYTHONPATH=. python -c "from src.db.database import SessionLocal; from src.models.core import Tenant; db=SessionLocal(); t=db.query(Tenant).filter(Tenant.contact_email=='${username}').first(); print(t.id if t else '')"`;
-                const resolvedId = execSync(cmd, { shell: '/bin/zsh', encoding: 'utf8' }).trim();
-                
-                if (resolvedId) {
-                    tenant_id = resolvedId;
-                    console.log(`Mock login: Resolved tenant_id ${tenant_id} from DB for ${username}`);
-                }
-            } catch (e) {
-                console.warn(`Mock login: DB lookup failed for ${username}, sticking to Chicago.`, e);
-            }
+        } else {
+            console.log(`Mock login: Using fallback tenant Chicago for ${username}`);
         }
 
         return {

@@ -10,7 +10,7 @@ from jwt.algorithms import RSAAlgorithm
 
 # AWS Cognito Configuration (Mocked via LocalStack for local dev)
 COGNITO_USER_POOL_ID = os.getenv("COGNITO_USER_POOL_ID", "us-east-1_mockpool")
-COGNITO_APP_CLIENT_ID = os.getenv("COGNITO_APP_CLIENT_ID", "mockclientid")
+COGNITO_APP_CLIENT_ID = os.getenv("COGNITO_CLIENT_ID", "mockclientid")
 AWS_REGION = os.getenv("AWS_REGION", "us-east-1")
 
 security = HTTPBearer()

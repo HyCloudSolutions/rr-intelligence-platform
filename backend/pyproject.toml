@@ -13,11 +13,12 @@ pydantic = "*"
 pyjwt = "*"
 cryptography = "*"
 requests = "*"
-pyjwt = "*"
-cryptography = "*"
-requests = "*"
 python-multipart = "*"
 email-validator = "*"
+alembic = "*"
+psycopg2-binary = "*"
+boto3 = "*"
+python-dotenv = "*"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

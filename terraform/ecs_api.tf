@@ -6,6 +6,16 @@ resource "aws_ecs_cluster" "main" {
   name = "${var.project_name}-${var.environment}-cluster"
 }
 
+resource "aws_cloudwatch_log_group" "ecs" {
+  name              = "/ecs/${var.project_name}-${var.environment}-api"
+  retention_in_days = 7
+
+  tags = {
+    Name        = "${var.project_name} API Logs"
+    Environment = var.environment
+  }
+}
+
 resource "aws_iam_role" "ecs_task_execution_role" {
   name = "${var.project_name}-${var.environment}-ecs-execution-role"
 
@@ -61,13 +71,20 @@ resource "aws_ecs_task_definition" "api" {
       name      = "api"
       image     = "${aws_ecr_repository.backend.repository_url}:latest"
       essential = true
-      command   = ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
       portMappings = [
         {
           containerPort = 8000
           hostPort      = 8000
         }
       ]
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          "awslogs-group"         = "/ecs/${var.project_name}-${var.environment}-api"
+          "awslogs-region"        = var.aws_region
+          "awslogs-stream-prefix" = "ecs"
+        }
+      }
       environment = [
         { name = "DATABASE_URL", value = "postgresql://${var.db_username}:${random_password.db_password.result}@${aws_db_instance.postgres.endpoint}/${aws_db_instance.postgres.db_name}" },
         { name = "COGNITO_USER_POOL_ID", value = aws_cognito_user_pool.main.id },

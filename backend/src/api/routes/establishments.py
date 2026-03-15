@@ -71,8 +71,10 @@ def search_establishments(
     tenant_id: str = Depends(get_current_tenant_id),
 ):
     """Search for establishments within the tenant by name or license ID."""
+    import uuid
+    tenant_uuid = uuid.UUID(tenant_id)
     
-    q = db.query(Establishment).filter(Establishment.tenant_id == tenant_id)
+    q = db.query(Establishment).filter(Establishment.tenant_id == tenant_uuid)
     
     if query:
         search_term = f"%{query}%"
@@ -104,12 +106,15 @@ def get_establishment_detail(
     tenant_id: str = Depends(get_current_tenant_id),
 ):
     """Returns detailed information for a single establishment."""
+    import uuid
+    tenant_uuid = uuid.UUID(tenant_id)
+    est_uuid = uuid.UUID(establishment_id)
 
     est = (
         db.query(Establishment)
         .filter(
-            Establishment.id == establishment_id,
-            Establishment.tenant_id == tenant_id,
+            Establishment.id == est_uuid,
+            Establishment.tenant_id == tenant_uuid,
         )
         .first()
     )
@@ -122,7 +127,7 @@ def get_establishment_detail(
     current_score_row = (
         db.query(DailyRiskScore)
         .filter(
-            DailyRiskScore.establishment_id == establishment_id,
+            DailyRiskScore.establishment_id == est_uuid,
             DailyRiskScore.score_date == today,
         )
         .first()
@@ -136,7 +141,7 @@ def get_establishment_detail(
     history_rows = (
         db.query(DailyRiskScore)
         .filter(
-            DailyRiskScore.establishment_id == establishment_id,
+            DailyRiskScore.establishment_id == est_uuid,
             DailyRiskScore.score_date >= thirty_days_ago,
         )
         .order_by(DailyRiskScore.score_date.asc())
@@ -170,7 +175,7 @@ def get_establishment_detail(
     # Inspection history
     insp_rows = (
         db.query(InspectionResult)
-        .filter(InspectionResult.establishment_id == establishment_id)
+        .filter(InspectionResult.establishment_id == est_uuid)
         .order_by(InspectionResult.inspection_date.desc())
         .limit(20)
         .all()

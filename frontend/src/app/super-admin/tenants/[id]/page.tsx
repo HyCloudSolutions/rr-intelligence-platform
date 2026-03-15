@@ -45,7 +45,7 @@ export default function TenantManagementPage() {
 
     const fetchData = async () => {
         try {
-            const apiUrl = process.env.NEXT_PUBLIC_INTERNAL_API_URL || 'http://localhost:8000';
+            const apiUrl = typeof window !== 'undefined' ? (process.env.NEXT_PUBLIC_API_URL || '/api/backend') : (process.env.INTERNAL_API_URL || 'http://localhost:8000');
             
             // Fetch Tenant Basic Info (could get this from list but safer to fetch or filter)
             // For now, we'll fetch from a list and find it
