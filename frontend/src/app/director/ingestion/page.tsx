@@ -25,14 +25,10 @@ export default function IngestionPage() {
         setErrorMsg(null);
 
         try {
-            // In a real Vercel deployment, this calls the Next.js API route which proxies, or calls the ALB directly
-            // For MVP local docker, we use the NEXT_PUBLIC exposed API URL or fallback to localhost
-            const apiUrl = process.env.INTERNAL_API_URL || 'http://localhost:8000';
-
             const formData = new FormData();
             formData.append("file", file);
 
-            const res = await fetch(`${apiUrl}/api/v1/ingestion`, {
+            const res = await fetch(`/api/v1/ingestion`, {
                 method: "POST",
                 headers: {
                     Authorization: `Bearer ${session?.accessToken}`
