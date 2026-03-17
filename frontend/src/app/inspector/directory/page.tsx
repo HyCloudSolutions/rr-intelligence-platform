@@ -40,10 +40,13 @@ export default function DirectoryPage() {
             const fetchHistory = async () => {
                 setIsLoadingHistory(true);
                 try {
-                    const res = await fetch('/api/v1/inspections/history');
+                    const res = await fetch('/api/v1/inspections/history', {
+                        credentials: 'include'
+                    });
                     if (res.ok) {
                         const data = await res.json();
-                        setHistoryResults(data.inspections || []);
+                        const inspections = data?.inspections;
+                        setHistoryResults(Array.isArray(inspections) ? inspections : []);
                     }
                 } catch (error) {
                     console.error("Failed to fetch history:", error);
@@ -69,7 +72,7 @@ export default function DirectoryPage() {
             });
             if (res.ok) {
                 const data = await res.json();
-                setSearchResults(data || []);
+                setSearchResults(Array.isArray(data) ? data : []);
             }
         } catch (error) {
             console.error("Failed to search:", error);

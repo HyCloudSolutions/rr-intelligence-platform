@@ -131,14 +131,14 @@ export const authOptions = {
         token.role = user.role;
         token.cognitoAccessToken = user.cognitoAccessToken;
       }
-      if (account) {
-        if (token.cognitoAccessToken) {
-          token.accessToken = token.cognitoAccessToken;
-        } else {
-          // Synthetic mock token
-          const syntheticToken = JSON.stringify({ "custom:tenant_id": token.tenant_id, "cognito:groups": [token.role] });
-          token.accessToken = `header.${Buffer.from(syntheticToken).toString('base64')}.signature`;
-        }
+      // IMPORTANT: Always derive accessToken on every request, not just on first login.
+      // `account` is only present during the initial sign-in callback.
+      if (token.cognitoAccessToken) {
+        token.accessToken = token.cognitoAccessToken;
+      } else {
+        // Synthetic mock token for local dev
+        const syntheticToken = JSON.stringify({ "custom:tenant_id": token.tenant_id, "cognito:groups": [token.role] });
+        token.accessToken = `header.${Buffer.from(syntheticToken).toString('base64')}.signature`;
       }
       return token;
     },

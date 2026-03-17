@@ -40,10 +40,16 @@ export default function EstablishmentProfilesPage() {
             headers: { Authorization: `Bearer ${session.accessToken}` }
         })
             .then(r => r.json())
-            .then((data: Establishment[]) => {
+            .then((data) => {
+                // Guard: backend may return an error object instead of an array
+                if (!Array.isArray(data)) {
+                    console.error('Establishments response is not an array:', data);
+                    setEstablishments([]);
+                    return;
+                }
                 // Client-side filter by facility type
                 if (facilityFilter !== 'All Types') {
-                    setEstablishments(data.filter(e => e.facility_type === facilityFilter));
+                    setEstablishments(data.filter((e: Establishment) => e.facility_type === facilityFilter));
                 } else {
                     setEstablishments(data);
                 }
