@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { redirect } from "next/navigation";
 import { DirectorQueueClient } from "./DirectorQueueClient";
+import { getBackendUrl } from "@/lib/backend";
 
 interface QueueItem {
     id: string;
@@ -25,7 +26,7 @@ interface QueueItem {
 }
 
 async function getDailyQueue(token: string): Promise<QueueItem[]> {
-    const apiUrl = process.env.INTERNAL_API_URL || 'http://backend:8000';
+    const apiUrl = getBackendUrl();
     try {
         const res = await fetch(`${apiUrl}/api/v1/queue/daily`, {
             headers: { Authorization: `Bearer ${token}` },

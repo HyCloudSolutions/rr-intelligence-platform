@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { getBackendUrl } from "@/lib/backend";
 
 interface ScorePoint { date: string; score: number; band: string; }
 interface InspectionRecord { id: string; date: string; result: string; critical_violations: number; non_critical_violations: number; }
@@ -17,7 +18,7 @@ interface DetailData {
 }
 
 async function getEstablishmentDetail(token: string, id: string): Promise<DetailData | null> {
-    const apiUrl = process.env.INTERNAL_API_URL || 'http://backend:8000';
+    const apiUrl = getBackendUrl();
     try {
         const res = await fetch(`${apiUrl}/api/v1/establishments/${id}`, {
             headers: { Authorization: `Bearer ${token}` },

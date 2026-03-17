@@ -4,6 +4,7 @@ import { RiskCard } from "@/components/RiskCard";
 import { OutcomeForm } from "@/components/OutcomeForm";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { getBackendUrl } from "@/lib/backend";
 
 interface QueueItem {
     id: string;
@@ -27,7 +28,7 @@ interface QueueItem {
 }
 
 async function getDailyQueue(token: string): Promise<QueueItem[]> {
-    const apiUrl = process.env.INTERNAL_API_URL || 'http://backend:8000';
+    const apiUrl = getBackendUrl();
     try {
         const res = await fetch(`${apiUrl}/api/v1/queue/daily`, {
             headers: { Authorization: `Bearer ${token}` },

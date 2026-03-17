@@ -2,9 +2,10 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { getBackendUrl } from "@/lib/backend";
 
 async function getInspectorQueue(token: string) {
-    const apiUrl = process.env.INTERNAL_API_URL || 'http://backend:8000';
+    const apiUrl = getBackendUrl();
     try {
         const res = await fetch(`${apiUrl}/api/v1/queue/daily`, {
             headers: { Authorization: `Bearer ${token}` },

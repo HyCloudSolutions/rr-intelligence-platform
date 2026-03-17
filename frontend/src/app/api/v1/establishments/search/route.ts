@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
+import { getBackendUrl } from '@/lib/backend';
 
 export async function GET(request: NextRequest) {
     try {
@@ -28,7 +29,7 @@ export async function GET(request: NextRequest) {
         const query = searchParams.get('query');
 
         // Use INTERNAL_API_URL from environment or fallback
-        const backendUrl = process.env.INTERNAL_API_URL || 'http://127.0.0.1:8000';
+        const backendUrl = getBackendUrl();
         const searchUrl = `${backendUrl}/api/v1/establishments/search${query ? `?query=${encodeURIComponent(query)}` : ''}`;
 
         const res = await fetch(searchUrl, {

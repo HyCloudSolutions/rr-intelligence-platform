@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
+import { getBackendUrl } from '@/lib/backend';
 
 export async function GET(request: NextRequest) {
     try {
@@ -20,7 +21,7 @@ export async function GET(request: NextRequest) {
             authHeader = `Bearer ${mockJwt}`;
         }
 
-        const backendUrl = process.env.INTERNAL_API_URL || 'http://127.0.0.1:8000';
+        const backendUrl = getBackendUrl();
         const url = `${backendUrl}/api/v1/users/inspectors`;
 
         const res = await fetch(url, {
@@ -57,7 +58,7 @@ export async function POST(request: NextRequest) {
         }
 
         const body = await request.json();
-        const backendUrl = process.env.INTERNAL_API_URL || 'http://127.0.0.1:8000';
+        const backendUrl = getBackendUrl();
         const url = `${backendUrl}/api/v1/users/inspectors`;
 
         const res = await fetch(url, {

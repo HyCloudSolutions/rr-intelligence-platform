@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
+import { getBackendUrl } from '@/lib/backend';
 
 export async function GET(request: NextRequest) {
     try {
@@ -23,8 +24,8 @@ export async function GET(request: NextRequest) {
             authHeader = `Bearer ${mockJwt}`;
         }
 
-        // Use INTERNAL_API_URL from environment or fallback
-        const backendUrl = process.env.INTERNAL_API_URL || 'http://127.0.0.1:8000';
+        // Use centralized backend URL
+        const backendUrl = getBackendUrl();
         const tenantUrl = `${backendUrl}/api/v1/tenants/me`;
 
         const res = await fetch(tenantUrl, {

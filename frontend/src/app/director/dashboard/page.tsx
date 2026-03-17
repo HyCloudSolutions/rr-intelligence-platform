@@ -9,10 +9,11 @@ import { ModelAccuracyPanel } from "@/components/dashboard/ModelAccuracyPanel";
 import { CoverageGauge } from "@/components/dashboard/CoverageGauge";
 import { InspectorLeaderboard } from "@/components/dashboard/InspectorLeaderboard";
 import { RepeatOffenders } from "@/components/dashboard/RepeatOffenders";
+import { getBackendUrl } from "@/lib/backend";
 import { redirect } from "next/navigation";
 
 async function getDashboardData(token: string) {
-    const apiUrl = process.env.INTERNAL_API_URL || 'http://backend:8000';
+    const apiUrl = getBackendUrl();
     try {
         const res = await fetch(`${apiUrl}/api/v1/dashboard/jurisdiction-summary`, {
             headers: { Authorization: `Bearer ${token}` },
