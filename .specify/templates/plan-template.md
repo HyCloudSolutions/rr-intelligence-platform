@@ -31,7 +31,11 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+- **Predictive & Proactive**: Does the design surface insights before issues occur?
+- **Explainable AI**: Are all ML predictions transparent and explainable to the end user?
+- **Tenant Isolation**: Is data strictly isolated per county/municipality within this feature?
+- **Managed Cloud-Native**: Does this avoid custom infrastructure and use stateless, managed services?
+- **IaC**: Are all necessary infrastructure changes defined in Terraform?
 
 ## Project Structure
 

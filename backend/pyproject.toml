@@ -1,0 +1,33 @@
+[tool.poetry]
+name = "rr-intelligence-api"
+version = "0.1.0"
+description = "RestaurantRisk Backend API and ML Worker"
+authors = ["Simon Adediran"]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+fastapi = "*"
+uvicorn = "*"
+sqlalchemy = "*"
+pydantic = "*"
+pyjwt = "*"
+cryptography = "*"
+requests = "*"
+python-multipart = "*"
+email-validator = "*"
+alembic = "*"
+psycopg2-binary = "*"
+boto3 = "*"
+python-dotenv = "*"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+
+[tool.black]
+line-length = 88
+target-version = ['py311']

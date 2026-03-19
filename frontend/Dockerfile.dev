@@ -1,0 +1,12 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm install --legacy-peer-deps
+
+# Next.js telemetry disable for cleaner logs
+ENV NEXT_TELEMETRY_DISABLED 1
+
+# Mount code for hot-reloading
+CMD ["npm", "run", "dev"]
