@@ -6,9 +6,32 @@ from datetime import datetime, date
 
 from src.db.database import get_db
 from src.models.core import DailyRiskScore, Establishment, InspectionResult, RiskBand, FacilityType
-from src.api.middleware.auth import get_current_tenant_id, get_current_user_role
-from pydantic import BaseModel
-from pydantic import Field
+from src.api.middleware.auth import get_current_tenant_id, get_current_user_role, COGNITO_USER_POOL_ID
+from pydantic import BaseModel, Field
+import boto3
+import os
+
+cognito_client = boto3.client('cognito-idp', region_name=os.getenv("AWS_REGION", "us-east-1"))
+
+def get_tenant_inspectors(tenant_id: str) -> List[str]:
+    if COGNITO_USER_POOL_ID == "us-east-1_mockpool":
+        return ["Mock Inspector 1", "Mock Inspector 2"]
+    try:
+        inspector_group = f"Tenant_{tenant_id}_Inspector"
+        response = cognito_client.list_users_in_group(
+            UserPoolId=COGNITO_USER_POOL_ID,
+            GroupName=inspector_group
+        )
+        users = []
+        for user in response.get('Users', []):
+            email = next((attr['Value'] for attr in user['Attributes'] if attr['Name'] == 'email'), user['Username'])
+            name = email.split('@')[0].replace('.', ' ').title()
+            users.append(name)
+        return users if users else ["Unassigned"]
+    except Exception as e:
+        print(f"Queue list inspectors error: {e}")
+        return ["Unassigned"]
+
 
 router = APIRouter(prefix="/api/v1/queue", tags=["queue"])
 
@@ -145,9 +168,25 @@ def get_daily_queue(
             return []  # Empty queue if database is entirely devoid of scores
 
     # 3. Format response
-    mock_inspectors = ["Sarah Chen", "Marcus Johnson", "Elena Rodriguez", "James Kim", "Priya Patel"]
+    actual_inspectors = get_tenant_inspectors(tenant_id)
+    inspector_counts = {name: 0 for name in actual_inspectors}
     response = []
-    for idx, score in enumerate(scores):
+
+    for score in scores:
+        assigned_to = None
+        if role == "director" and actual_inspectors:
+            for inspector in actual_inspectors:
+                if inspector_counts[inspector] < 10:
+                    assigned_to = inspector
+                    inspector_counts[inspector] += 1
+                    break
+            # If all inspectors are full, stop creating assignments
+            if not assigned_to and all(count >= 10 for count in inspector_counts.values()):
+                break
+                
+        if role == "inspector" and len(response) >= 10:
+            break
+
         response.append(
             EstablishmentQueueItem(
                 id=str(score.establishment.id),
@@ -155,7 +194,7 @@ def get_daily_queue(
                 license_id=score.establishment.license_id,
                 address=score.establishment.address,
                 facility_type=score.establishment.facility_type.value,
-                assigned_inspector=mock_inspectors[idx % len(mock_inspectors)] if role == "director" else None,
+                assigned_inspector=assigned_to,
                 risk_data=RiskScoreResponse(
                     id=str(score.id),
                     score_date=score.score_date,

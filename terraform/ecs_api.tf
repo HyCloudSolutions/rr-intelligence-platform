@@ -58,6 +58,44 @@ resource "aws_security_group" "ecs_tasks" {
   }
 }
 
+resource "aws_iam_role" "ecs_task_role" {
+  name = "${var.project_name}-${var.environment}-ecs-task-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "ecs-tasks.amazonaws.com"
+        }
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "ecs_task_cognito" {
+  name = "${var.project_name}-${var.environment}-ecs-cognito-policy"
+  role = aws_iam_role.ecs_task_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "cognito-idp:ListUsers",
+          "cognito-idp:AdminCreateUser",
+          "cognito-idp:AdminSetUserPassword",
+          "cognito-idp:AdminGetUser"
+        ]
+        Resource = aws_cognito_user_pool.main.arn
+      }
+    ]
+  })
+}
+
 resource "aws_ecs_task_definition" "api" {
   family                   = "${var.project_name}-${var.environment}-api"
   network_mode             = "awsvpc"
@@ -65,6 +103,7 @@ resource "aws_ecs_task_definition" "api" {
   cpu                      = 512
   memory                   = 1024
   execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
+  task_role_arn            = aws_iam_role.ecs_task_role.arn
 
   container_definitions = jsonencode([
     {
@@ -88,7 +127,7 @@ resource "aws_ecs_task_definition" "api" {
       environment = [
         { name = "DATABASE_URL", value = "postgresql://${var.db_username}:${random_password.db_password.result}@${aws_db_instance.postgres.endpoint}/${aws_db_instance.postgres.db_name}" },
         { name = "COGNITO_USER_POOL_ID", value = aws_cognito_user_pool.main.id },
-        { name = "COGNITO_APP_CLIENT_ID", value = aws_cognito_user_pool_client.nextjs_client.id }
+        { name = "COGNITO_CLIENT_ID", value = aws_cognito_user_pool_client.nextjs_client.id }
       ]
     }
   ])

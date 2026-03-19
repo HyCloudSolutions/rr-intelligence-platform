@@ -1,6 +1,10 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.orm import Session
+from sqlalchemy import text
+from datetime import datetime, timezone
 from src.api.routes import queue, inspections, dashboard, establishments, ingestion, tenants, users
+from src.db.database import get_db
 
 app = FastAPI(title="RestaurantRisk Intelligence API")
 
@@ -14,9 +18,19 @@ app.add_middleware(
 )
 
 
-@app.get("/health")
-def health_check():
-    return {"status": "ok"}
+@app.get("/api/v1/health")
+def health_check(db: Session = Depends(get_db)):
+    """Production health check — verifies DB connectivity for the ALB."""
+    try:
+        db.execute(text("SELECT 1"))
+        db_ok = True
+    except Exception:
+        db_ok = False
+    return {
+        "status": "healthy" if db_ok else "degraded",
+        "db": db_ok,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
 
 
 # Register Core API routers (Phase 3 & 4)

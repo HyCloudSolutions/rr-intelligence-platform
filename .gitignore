@@ -34,3 +34,5 @@ build/
 *.db
 backend_logs.txt
 test_ingestion.csv
+venv/
+__pycache__/

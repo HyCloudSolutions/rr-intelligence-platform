@@ -1,194 +1,115 @@
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import { redirect } from "next/navigation";
-import Link from "next/link";
-import { getBackendUrl } from "@/lib/backend";
+'use client';
 
-async function getInspectorQueue(token: string) {
-    const apiUrl = getBackendUrl();
-    try {
-        const res = await fetch(`${apiUrl}/api/v1/queue/daily`, {
-            headers: { Authorization: `Bearer ${token}` },
-            cache: 'no-store'
-        });
-        if (!res.ok) return [];
-        return res.json();
-    } catch (err) {
-        return [];
-    }
+import { useState, useEffect } from 'react';
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
+
+interface QueueItem {
+    id: string;
+    establishment_id: string;
+    establishment_name: string;
+    address: string;
+    risk_score: number;
+    risk_band: string;
+    priority: number;
+    status: string;
 }
 
-export default async function InspectorDashboardPage() {
-    const session = await getServerSession(authOptions);
-    if (!session || session.user?.role !== "inspector") redirect("/login");
+const bandStyles: Record<string, string> = {
+    High: 'bg-red-500',
+    Medium: 'bg-amber-500',
+    Low: 'bg-emerald-500',
+};
 
-    const queue = await getInspectorQueue(session.accessToken as string);
+export default function InspectorDashboard() {
+    const { data: session } = useSession();
+    const router = useRouter();
+    const [queue, setQueue] = useState<QueueItem[]>([]);
+    const [loading, setLoading] = useState(true);
 
-    const today = new Date();
-    const greeting = today.getHours() < 12 ? 'Good morning' : today.getHours() < 17 ? 'Good afternoon' : 'Good evening';
-    const formattedDate = today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+    useEffect(() => {
+        if (!session?.accessToken) return;
+        fetch('/api/v1/queue', {
+            headers: { Authorization: `Bearer ${session.accessToken}` }
+        })
+            .then(r => r.json())
+            .then(data => {
+                if (Array.isArray(data)) setQueue(data);
+                else if (data?.items) setQueue(data.items);
+                else setQueue([]);
+            })
+            .catch(() => setQueue([]))
+            .finally(() => setLoading(false));
+    }, [session?.accessToken]);
 
-    const total = queue.length;
-    const highCount = queue.filter((q: any) => q.risk_data?.risk_band === 'High').length;
-    const medCount = queue.filter((q: any) => q.risk_data?.risk_band === 'Medium').length;
-    const lowCount = queue.filter((q: any) => q.risk_data?.risk_band === 'Low').length;
-
-    // Mock completed (would come from real data)
-    const completed = Math.floor(Math.random() * 3);
-    const remaining = total - completed;
-
-    // Recent activity (simulate from queue data)
-    const recentCompleted = queue.slice(0, Math.min(5, completed)).map((item: any, i: number) => ({
-        name: item.name,
-        outcome: i % 3 === 0 ? 'Fail' : i % 3 === 1 ? 'Pass' : 'Conditional',
-        time: `${9 + i}:${30 + i * 15 < 60 ? (30 + i * 15) : '00'} AM`,
-    }));
-
-    // Streak tracker (mock)
-    const streak = 12;
-    const weekDays = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
-    const dayOfWeek = today.getDay();
+    const pendingItems = queue.filter(q => q.status === 'pending' || q.status === 'assigned');
+    const completedItems = queue.filter(q => q.status === 'completed');
 
     return (
-        <div className="min-h-screen">
-            <header className="bg-white border-b border-slate-200 sticky top-0 z-10">
-                <div className="max-w-4xl mx-auto px-6 py-5">
-                    <h1 className="text-xl font-bold text-slate-900">{greeting}, Inspector</h1>
-                    <p className="text-sm text-slate-400 mt-0.5">{formattedDate}</p>
+        <div className="px-4 py-5">
+            {/* Welcome */}
+            <div className="mb-5">
+                <h2 className="text-lg font-bold text-slate-900">My Inspection Queue</h2>
+                <p className="text-xs text-slate-400 mt-0.5">{pendingItems.length} inspections pending today</p>
+            </div>
+
+            {/* Stats row */}
+            <div className="grid grid-cols-3 gap-3 mb-6">
+                <div className="bg-white rounded-xl border border-slate-200 p-3 text-center">
+                    <span className="text-2xl font-bold text-blue-600">{pendingItems.length}</span>
+                    <p className="text-[10px] text-slate-400 mt-0.5">Pending</p>
                 </div>
-            </header>
-
-            <main className="max-w-4xl mx-auto px-6 py-6 space-y-6">
-                {/* Today's Overview */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                    <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm text-center">
-                        <div className="text-3xl font-bold text-slate-900">{total}</div>
-                        <div className="text-xs font-medium text-slate-400 uppercase tracking-wider mt-1">Assigned</div>
-                    </div>
-                    <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm text-center">
-                        <div className="text-3xl font-bold text-emerald-600">{completed}</div>
-                        <div className="text-xs font-medium text-slate-400 uppercase tracking-wider mt-1">Completed</div>
-                    </div>
-                    <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm text-center">
-                        <div className="text-3xl font-bold text-blue-600">{remaining}</div>
-                        <div className="text-xs font-medium text-slate-400 uppercase tracking-wider mt-1">Remaining</div>
-                    </div>
-                    <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm text-center">
-                        <div className="text-3xl font-bold text-red-600">{highCount}</div>
-                        <div className="text-xs font-medium text-slate-400 uppercase tracking-wider mt-1">High Risk</div>
-                    </div>
+                <div className="bg-white rounded-xl border border-slate-200 p-3 text-center">
+                    <span className="text-2xl font-bold text-emerald-600">{completedItems.length}</span>
+                    <p className="text-[10px] text-slate-400 mt-0.5">Done Today</p>
                 </div>
+                <div className="bg-white rounded-xl border border-slate-200 p-3 text-center">
+                    <span className="text-2xl font-bold text-slate-900">{queue.length}</span>
+                    <p className="text-[10px] text-slate-400 mt-0.5">Total</p>
+                </div>
+            </div>
 
-                {/* Quick Action */}
-                <Link
-                    href="/inspector/queue"
-                    className="block bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl p-5 shadow-md hover:shadow-lg hover:scale-[1.01] transition-all duration-300"
-                >
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <h3 className="text-white font-bold text-lg">Start Next Inspection</h3>
-                            <p className="text-blue-100 text-sm mt-0.5">{remaining} inspections remaining today</p>
-                        </div>
-                        <div className="bg-white/20 rounded-xl p-3">
-                            <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
-                            </svg>
-                        </div>
-                    </div>
-                </Link>
-
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* Risk Breakdown */}
-                    <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
-                        <h3 className="text-base font-bold text-slate-900 mb-1">Today&apos;s Queue by Risk</h3>
-                        <p className="text-xs text-slate-400 mb-4">Your assigned inspections breakdown</p>
-
-                        <div className="space-y-3">
-                            {[
-                                { label: 'High Risk', count: highCount, color: 'bg-red-500', total: total },
-                                { label: 'Medium Risk', count: medCount, color: 'bg-amber-500', total: total },
-                                { label: 'Low Risk', count: lowCount, color: 'bg-emerald-500', total: total },
-                            ].map(item => (
-                                <div key={item.label}>
-                                    <div className="flex items-center justify-between text-sm mb-1">
-                                        <span className="text-slate-600 font-medium">{item.label}</span>
-                                        <span className="text-slate-900 font-bold">{item.count}</span>
+            {/* Queue Cards */}
+            {loading ? (
+                <div className="flex justify-center py-12">
+                    <div className="w-8 h-8 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
+                </div>
+            ) : pendingItems.length === 0 ? (
+                <div className="text-center py-12">
+                    <div className="text-4xl mb-3">✅</div>
+                    <h3 className="font-semibold text-slate-900">All caught up!</h3>
+                    <p className="text-sm text-slate-400 mt-1">No pending inspections in your queue.</p>
+                </div>
+            ) : (
+                <div className="space-y-3">
+                    {pendingItems.map((item, i) => (
+                        <button
+                            key={item.id}
+                            onClick={() => router.push(`/inspector/inspect/${item.establishment_id}`)}
+                            className="w-full bg-white rounded-xl border border-slate-200 p-4 text-left active:bg-slate-50 transition-colors shadow-sm"
+                        >
+                            <div className="flex items-start justify-between gap-3">
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <span className="text-xs font-semibold text-slate-400">#{i + 1}</span>
+                                        <h3 className="font-semibold text-slate-900 truncate text-sm">{item.establishment_name}</h3>
                                     </div>
-                                    <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                                        <div
-                                            className={`h-full ${item.color} rounded-full transition-all duration-700`}
-                                            style={{ width: `${item.total > 0 ? (item.count / item.total * 100) : 0}%` }}
-                                        />
-                                    </div>
+                                    <p className="text-xs text-slate-400 truncate">{item.address}</p>
                                 </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Streak Tracker */}
-                    <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
-                        <h3 className="text-base font-bold text-slate-900 mb-1">Inspection Streak</h3>
-                        <p className="text-xs text-slate-400 mb-4">Consecutive days with completed inspections</p>
-
-                        <div className="text-center mb-4">
-                            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl px-5 py-3">
-                                <span className="text-2xl">🔥</span>
-                                <span className="text-3xl font-bold text-amber-700">{streak}</span>
-                                <span className="text-sm text-amber-600 font-medium">day streak</span>
+                                <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                                    <span className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm ${bandStyles[item.risk_band] || 'bg-slate-400'}`}>
+                                        {Math.round(item.risk_score)}
+                                    </span>
+                                    <span className="text-[10px] text-slate-400">{item.risk_band} Risk</span>
+                                </div>
                             </div>
-                        </div>
-
-                        <div className="flex justify-center gap-2">
-                            {weekDays.map((day, i) => {
-                                const adjustedIndex = (i + 1) % 7; // Monday = 0
-                                const isToday = adjustedIndex === dayOfWeek;
-                                const isPast = adjustedIndex < dayOfWeek || (dayOfWeek === 0 && i < 6);
-                                return (
-                                    <div key={i} className="text-center">
-                                        <div className="text-[10px] text-slate-400 font-medium mb-1">{day}</div>
-                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold transition-all ${isToday
-                                            ? 'bg-blue-500 text-white shadow-md shadow-blue-500/30'
-                                            : isPast
-                                                ? 'bg-emerald-100 text-emerald-600'
-                                                : 'bg-slate-100 text-slate-400'
-                                            }`}>
-                                            {isPast ? '✓' : isToday ? '•' : ''}
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
+                            <div className="mt-3 flex items-center justify-between">
+                                <span className="text-[10px] uppercase tracking-wider font-semibold text-blue-600">Tap to inspect →</span>
+                            </div>
+                        </button>
+                    ))}
                 </div>
-
-                {/* Recent Activity */}
-                {recentCompleted.length > 0 && (
-                    <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
-                        <h3 className="text-base font-bold text-slate-900 mb-1">Recent Activity</h3>
-                        <p className="text-xs text-slate-400 mb-4">Your latest completed inspections</p>
-                        <div className="space-y-3">
-                            {recentCompleted.map((item: any, i: number) => (
-                                <div key={i} className="flex items-center justify-between py-2 border-b border-slate-50 last:border-0">
-                                    <div className="flex items-center gap-3">
-                                        <div className={`w-2 h-2 rounded-full ${item.outcome === 'Pass' ? 'bg-emerald-500' :
-                                            item.outcome === 'Fail' ? 'bg-red-500' : 'bg-amber-500'
-                                            }`} />
-                                        <span className="text-sm font-medium text-slate-700">{item.name}</span>
-                                    </div>
-                                    <div className="flex items-center gap-3">
-                                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${item.outcome === 'Pass' ? 'bg-emerald-50 text-emerald-700' :
-                                            item.outcome === 'Fail' ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-700'
-                                            }`}>
-                                            {item.outcome}
-                                        </span>
-                                        <span className="text-xs text-slate-400">{item.time}</span>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
-            </main>
+            )}
         </div>
     );
 }

@@ -13,6 +13,7 @@ from src.models.core import (
     RiskBand,
 )
 from src.api.middleware.auth import get_current_tenant_id, get_current_user_role
+from src.services.cognito_cache import get_user_map, get_display_name
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/api/v1/dashboard", tags=["dashboard"])
@@ -322,13 +323,8 @@ def get_jurisdiction_summary(
         .all()
     )
 
-    mock_owners = {
-        "Bob's Burgers": "Bob Belcher",
-        "Jimmy Pesto's Pizzeria": "Jimmy Pesto",
-    }
-    mock_inspector_names = [
-        "Sarah Chen", "Marcus Johnson", "Elena Rodriguez", "James Kim", "Priya Patel"
-    ]
+    # Resolve inspector names from Cognito
+    user_map = get_user_map()
 
     top_establishments = []
     for idx, (score, est) in enumerate(top_scores):
@@ -338,8 +334,9 @@ def get_jurisdiction_summary(
             .order_by(InspectionResult.inspection_date.desc())
             .first()
         )
-        owner_name = mock_owners.get(est.name, f"Owner-{str(est.id)[:6]}")
-        inspector_name = mock_inspector_names[idx % len(mock_inspector_names)] if last_insp else None
+        inspector_name = None
+        if last_insp:
+            inspector_name = user_map.get(str(last_insp.inspector_id))
         top_establishments.append(
             TopEstablishment(
                 id=str(est.id),
@@ -350,7 +347,7 @@ def get_jurisdiction_summary(
                 risk_band=score.risk_band.value,
                 last_inspection=str(last_insp.inspection_date) if last_insp else None,
                 trend="up" if score.risk_score > 70 else ("stable" if score.risk_score > 40 else "down"),
-                owner=owner_name,
+                owner=None,
                 last_inspector_name=inspector_name,
             )
         )
@@ -409,24 +406,45 @@ def get_jurisdiction_summary(
 
     # ── 8. Inspector Leaderboard ─────────────────────────────────
 
+    # ── 8. Inspector Leaderboard (Real Data) ──────────────────────
     inspector_stats = []
-    for i, name in enumerate(mock_inspector_names):
-        # Simulate stats from inspection data — each inspector gets ~1/5 of inspections
-        inspector_total = total_inspections_30d // len(mock_inspector_names) + (1 if i < total_inspections_30d % len(mock_inspector_names) else 0)
-        inspector_fails = failed_inspections // len(mock_inspector_names) + (1 if i < failed_inspections % len(mock_inspector_names) else 0)
-        c_rate = (inspector_fails / inspector_total) if inspector_total > 0 else 0.0
+    inspector_rows = (
+        db.query(
+            InspectionResult.inspector_id,
+            func.count(InspectionResult.id).label("total"),
+            func.sum(case((InspectionResult.result == InspectionResultOutcome.FAIL, 1), else_=0)).label("fails"),
+        )
+        .filter(
+            InspectionResult.tenant_id == tenant_id,
+            InspectionResult.inspection_date >= thirty_days_ago,
+        )
+        .group_by(InspectionResult.inspector_id)
+        .order_by(func.count(InspectionResult.id).desc())
+        .limit(10)
+        .all()
+    )
 
-        # Add some variance so the leaderboard is interesting
-        import random
-        random.seed(hash(name))
-        variance = random.uniform(0.8, 1.3)
-        inspector_total_varied = max(1, int(inspector_total * variance))
-
+    for row in inspector_rows:
+        insp_name = user_map.get(str(row.inspector_id), f"Inspector-{str(row.inspector_id)[-4:]}")
+        c_rate = (row.fails / row.total) if row.total > 0 else 0.0
+        # Avg risk score of establishments they inspected
+        avg_score = (
+            db.query(func.avg(DailyRiskScore.risk_score))
+            .join(InspectionResult, InspectionResult.establishment_id == DailyRiskScore.establishment_id)
+            .filter(
+                InspectionResult.inspector_id == row.inspector_id,
+                InspectionResult.tenant_id == tenant_id,
+                InspectionResult.inspection_date >= thirty_days_ago,
+                DailyRiskScore.score_date == score_date,
+            )
+            .scalar()
+            or 50.0
+        )
         inspector_stats.append(InspectorStat(
-            name=name,
-            inspections_completed=inspector_total_varied,
-            catch_rate=round(c_rate + random.uniform(-0.05, 0.05), 3),
-            avg_score_found=round(50 + random.uniform(-15, 15), 1),
+            name=insp_name,
+            inspections_completed=row.total,
+            catch_rate=round(c_rate, 3),
+            avg_score_found=round(avg_score, 1),
         ))
 
     # ── 9. Repeat Offenders ──────────────────────────────────────
@@ -463,8 +481,14 @@ def get_jurisdiction_summary(
         )
 
         if consecutive >= 20:
-            # Get assigned inspector
-            inspector_idx = hash(str(est.id)) % len(mock_inspector_names)
+            # Get the last inspector who visited this establishment
+            last_inspector = (
+                db.query(InspectionResult.inspector_id)
+                .filter(InspectionResult.establishment_id == est.id)
+                .order_by(InspectionResult.inspection_date.desc())
+                .first()
+            )
+            assigned = user_map.get(str(last_inspector[0]), None) if last_inspector else None
             repeat_offenders.append(RepeatOffender(
                 id=str(est.id),
                 name=est.name,
@@ -472,7 +496,7 @@ def get_jurisdiction_summary(
                 facility_type=est.facility_type,
                 consecutive_high_days=consecutive,
                 current_score=score.risk_score,
-                assigned_inspector=mock_inspector_names[inspector_idx],
+                assigned_inspector=assigned,
             ))
 
     # Limit to top 15 most severe

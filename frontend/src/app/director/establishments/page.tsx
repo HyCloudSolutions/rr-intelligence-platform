@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 
 interface Establishment {
     id: string;
@@ -16,6 +17,7 @@ const facilityTypes = ['All Types', 'Restaurant', 'Grocery', 'Mobile'];
 
 export default function EstablishmentProfilesPage() {
     const { data: session } = useSession();
+    const router = useRouter();
     const [establishments, setEstablishments] = useState<Establishment[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
@@ -138,7 +140,7 @@ export default function EstablishmentProfilesPage() {
                                     </tr>
                                 ) : (
                                     establishments.map((est, i) => (
-                                        <tr key={est.id} className="border-b border-slate-50 hover:bg-slate-50/70 transition-colors">
+                                        <tr key={est.id} onClick={() => router.push(`/director/establishments/${est.id}`)} className="border-b border-slate-50 hover:bg-slate-50/70 transition-colors cursor-pointer">
                                             <td className="px-5 py-3">
                                                 <div className="font-semibold text-slate-900">{est.name}</div>
                                                 <div className="text-xs text-slate-400 mt-0.5 truncate max-w-xs">{est.address}</div>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -13,8 +13,12 @@ export default function IngestionPage() {
     const apiUrl = typeof window !== 'undefined' ? (process.env.NEXT_PUBLIC_API_URL || '/api/backend') : (process.env.INTERNAL_API_URL || 'http://localhost:8000');
     const [file, setFile] = useState<File | null>(null);
     const [uploading, setUploading] = useState(false);
-    const [success, setSuccess] = useState(false);
+    const [success, setSuccess] = useState<boolean | string>(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
+    const [jobId, setJobId] = useState<string | null>(null);
+    const [statusData, setStatusData] = useState<any>(null);
+
+    const [polling, setPolling] = useState(false);
 
     const handleUpload = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -40,8 +44,9 @@ export default function IngestionPage() {
                 const errorData = await res.json().catch(() => ({}));
                 throw new Error(errorData.detail || "Upload failed");
             }
-
-            setSuccess(true);
+            const data = await res.json();
+            setJobId(data.job_id);
+            setSuccess(data.message || "Upload successful. Records queued for processing.");
             setFile(null);
         } catch (err: any) {
             console.error("Ingestion error:", err);
@@ -50,6 +55,32 @@ export default function IngestionPage() {
             setUploading(false);
         }
     };
+
+    // Polling useEffect
+    useEffect(() => {
+        if (!jobId || !session?.accessToken) return;
+
+        setStatusData({ status: "processing", processed: 0, rows_total: 0, errors: 0 });
+
+        const interval = setInterval(async () => {
+            try {
+                const res = await fetch(`/api/v1/ingestion/status/${jobId}`, {
+                    headers: { Authorization: `Bearer ${session.accessToken}` }
+                });
+                if (res.ok) {
+                    const status = await res.json();
+                    setStatusData(status);
+                    if (status.status === 'completed' || status.status === 'failed') {
+                        clearInterval(interval);
+                    }
+                }
+            } catch (err) {
+                console.error("Polling error:", err);
+            }
+        }, 2000);
+
+        return () => clearInterval(interval);
+    }, [jobId, session?.accessToken]);
 
     return (
         <div className="min-h-screen bg-neutral-50 p-8">
@@ -88,7 +119,25 @@ export default function IngestionPage() {
 
                             {success && (
                                 <div className="p-4 bg-emerald-50 text-emerald-800 rounded-md text-sm font-medium border border-emerald-200">
-                                    Upload successful. The nightly batch processor will index these records.
+                                    {typeof success === 'string' ? success : "Upload successful."}
+                                </div>
+                            )}
+
+                            {statusData && (
+                                <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg space-y-3">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-sm font-semibold text-slate-700">Processing Job: <code className="bg-slate-100 px-1 rounded">{jobId?.slice(0,8)}...</code></span>
+                                        <span className={`px-2 py-1 rounded-full text-xs font-bold ${statusData.status === 'completed' ? 'bg-emerald-100 text-emerald-800' : statusData.status === 'failed' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800 animate-pulse'}`}>
+                                            {statusData.status.toUpperCase()}
+                                        </span>
+                                    </div>
+                                    <div className="w-full bg-slate-200 rounded-full h-2">
+                                        <div className={`h-2 rounded-full bg-blue-600 transition-all duration-500`} style={{ width: `${statusData.rows_total > 0 ? (statusData.processed / statusData.rows_total) * 100 : 0}%` }} />
+                                    </div>
+                                    <div className="flex justify-between text-xs text-slate-500">
+                                        <span>Processed: {statusData.processed} / {statusData.rows_total}</span>
+                                        {statusData.errors > 0 && <span className="text-red-500">Errors: {statusData.errors}</span>}
+                                    </div>
                                 </div>
                             )}
 
