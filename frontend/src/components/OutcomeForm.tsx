@@ -24,7 +24,8 @@ export function OutcomeForm({ establishmentId, establishmentName, token }: Outco
         e.preventDefault();
         setSubmitting(true);
         try {
-            const res = await fetch(`${apiUrl}/api/v1/inspections/`, {
+            // Using Next.js rewrites to absolute path to bypass mixed content blocks on live triggers
+            const res = await fetch(`/api/backend/api/v1/inspections/`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -41,9 +42,13 @@ export function OutcomeForm({ establishmentId, establishmentName, token }: Outco
             if (res.ok) {
                 setSubmitted(true);
                 router.refresh(); // Refresh to update the queue list
+            } else {
+                const errorText = await res.text();
+                alert(`Failed to submit outcome (${res.status}): ${errorText || 'Unknown Error'}`);
             }
         } catch (err) {
             console.error('Failed to submit outcome', err);
+            alert(`Unexpected Connection Error: ${err instanceof Error ? err.message : 'Unknown Error'}`);
         } finally {
             setSubmitting(false);
         }
@@ -77,57 +82,66 @@ export function OutcomeForm({ establishmentId, establishmentName, token }: Outco
     }
 
     return (
-        <form onSubmit={handleSubmit} className="mt-3 p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
-            <div className="flex items-center justify-between">
-                <h4 className="text-sm font-bold text-slate-700">Inspection Outcome</h4>
-                <button type="button" onClick={() => setIsOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </button>
-            </div>
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+            <form onSubmit={handleSubmit} className="w-full max-w-sm bg-white border border-slate-200 rounded-xl p-5 space-y-3 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h4 className="text-sm font-bold text-slate-800">Log Inspection Outcome</h4>
+                        <p className="text-[10px] text-slate-400 mt-0.5">{establishmentName}</p>
+                    </div>
+                    <button type="button" onClick={() => setIsOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
 
-            <select
-                value={result}
-                onChange={(e) => setResult(e.target.value)}
-                required
-                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
-            >
-                <option value="">Select result…</option>
-                <option value="Pass">Pass</option>
-                <option value="Pass w/ Conditions">Pass w/ Conditions</option>
-                <option value="Fail">Fail</option>
-                <option value="Out of Business">Out of Business</option>
-            </select>
+                <div className="space-y-1">
+                    <label className="text-xs text-slate-500 font-medium">Result</label>
+                    <select
+                        value={result}
+                        onChange={(e) => setResult(e.target.value)}
+                        required
+                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                    >
+                        <option value="">Select result…</option>
+                        <option value="Pass">Pass</option>
+                        <option value="Pass w/ Conditions">Pass w/ Conditions</option>
+                        <option value="Fail">Fail</option>
+                        <option value="Out of Business">Out of Business</option>
+                    </select>
+                </div>
 
-            <div className="flex gap-3">
-                <div className="flex-1">
+                <div className="space-y-1">
                     <label className="text-xs text-slate-500 font-medium">Critical Violations</label>
                     <input
                         type="number"
                         min={0}
                         value={violations}
                         onChange={(e) => setViolations(Number(e.target.value))}
-                        className="w-full mt-1 px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30"
                     />
                 </div>
-            </div>
 
-            <textarea
-                placeholder="Inspector notes…"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                rows={2}
-                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500/30"
-            />
+                <div className="space-y-1">
+                    <label className="text-xs text-slate-500 font-medium">Inspector Notes</label>
+                    <textarea
+                        placeholder="Add observation details…"
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                        rows={3}
+                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                    />
+                </div>
 
-            <button
-                type="submit"
-                disabled={submitting || !result}
-                className="w-full py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm font-semibold rounded-lg transition-all"
-            >
-                {submitting ? 'Submitting…' : 'Submit Outcome'}
-            </button>
-        </form>
+                <button
+                    type="submit"
+                    disabled={submitting || !result}
+                    className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm font-bold rounded-lg transition-all shadow-md active:scale-[0.98]"
+                >
+                    {submitting ? 'Submitting…' : 'Submit Outcome'}
+                </button>
+            </form>
+        </div>
     );
 }
