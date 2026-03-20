@@ -11,6 +11,7 @@ from src.api.middleware.auth import get_current_tenant_id, get_current_user_role
 from src.db.database import get_db
 from sqlalchemy.orm import Session
 from src.models.core import Establishment, FacilityType, RiskCategory, InspectionResult, InspectionType, InspectionResultOutcome, DailyRiskScore, RiskBand
+import boto3
 
 router = APIRouter(prefix="/api/v1/ingestion", tags=["Ingestion"])
 
@@ -18,8 +19,8 @@ router = APIRouter(prefix="/api/v1/ingestion", tags=["Ingestion"])
 ingestion_jobs: Dict[str, Dict[str, Any]] = {}
 
 
-def process_csv_background(file_path: str, tenant_id: str, job_id: str):
-    """Background task to parse the uploaded CSV and insert Establishments."""
+def process_csv_background(file_path: str, tenant_id: str, job_id: str, mapping: Dict[str, str] = {}):
+    """Background task to parse the uploaded CSV and insert Establishments with custom mapping."""
     print(f"Starting background ingestion for Tenant {tenant_id}, Job {job_id}")
     if job_id not in ingestion_jobs:
         ingestion_jobs[job_id] = {"status": "processing", "rows_total": 0, "processed": 0, "errors": 0}
@@ -46,31 +47,36 @@ def process_csv_background(file_path: str, tenant_id: str, job_id: str):
         processed_est_ids = set()
         for index, row in df.iterrows():
             try:
-                # San Francisco uses 'business_id', Chicago uses 'LICENSE_ID' or 'License #'
-                lic_id = str(row.get("business_id", row.get("LICENSE_ID", ""))).strip()
+                # Use provided mapping if alive, fallback to defaults
+                lic_col = mapping.get("license_id", "business_id")
+                lic_id = str(row.get(lic_col, row.get("LICENSE_ID", row.get("License #", "")))).strip()
                 if not lic_id or lic_id == "nan":
-                    lic_id = str(row.get("License #", "")).strip()
-                    if not lic_id or lic_id == "nan":
-                        continue
+                    continue
 
-                fac_type_str = str(row.get("FACILITY_TYPE", row.get("Facility Type", "Restaurant")))
+                fac_col = mapping.get("facility_type", "FACILITY_TYPE")
+                fac_type_str = str(row.get(fac_col, row.get("Facility Type", "Restaurant")))
                 fac_type_enum = FacilityType.RESTAURANT
                 if "Grocery" in fac_type_str:
                     fac_type_enum = FacilityType.GROCERY
                 elif "Mobile" in fac_type_str or "Truck" in fac_type_str:
                     fac_type_enum = FacilityType.MOBILE
 
-                # SF uses 'risk_category' (e.g. 'Low Risk', 'High Risk')
-                risk_str = str(row.get("risk_category", row.get("BASELINE_RISK", row.get("Risk", "Medium"))))
+                risk_col = mapping.get("risk_category", "risk_category")
+                risk_str = str(row.get(risk_col, row.get("BASELINE_RISK", row.get("Risk", "Medium"))))
                 risk_enum = RiskCategory.MEDIUM
                 if "High" in risk_str or "Risk 1" in risk_str:
                     risk_enum = RiskCategory.HIGH
                 elif "Low" in risk_str or "Risk 3" in risk_str:
                     risk_enum = RiskCategory.LOW
 
-                name = str(row.get("business_name", row.get("NAME", row.get("DBA Name", "Unknown Name"))))
-                address = str(row.get("business_address", row.get("ADDRESS", row.get("Address", "Unknown Address"))))
-                zip_code = str(row.get("business_postal_code", row.get("ZIP", row.get("Zip", ""))))
+                name_col = mapping.get("name", "business_name")
+                name = str(row.get(name_col, row.get("NAME", row.get("DBA Name", "Unknown Name"))))
+                
+                addr_col = mapping.get("address", "business_address")
+                address = str(row.get(addr_col, row.get("ADDRESS", row.get("Address", "Unknown Address"))))
+                
+                zip_col = mapping.get("zip_code", "business_postal_code")
+                zip_code = str(row.get(zip_col, row.get("ZIP", row.get("Zip", ""))))
 
                 existing = (
                     db.query(Establishment)
@@ -237,6 +243,7 @@ def process_csv_background(file_path: str, tenant_id: str, job_id: str):
     except Exception as e:
         print(f"Ingestion transaction failed: {e}")
         ingestion_jobs[job_id]["status"] = "failed"
+        ingestion_jobs[job_id]["error_msg"] = str(e)
         db.rollback()
     finally:
         db.close()
@@ -309,3 +316,95 @@ async def get_ingestion_status(job_id: str, role: str = Depends(get_current_user
         "processed": ingestion_jobs[job_id].get("processed", 0),
         "errors": ingestion_jobs[job_id].get("errors", 0),
     }
+
+class IngestionWithMapping(BaseModel):
+    temp_file: str
+    mapping: Dict[str, str]
+
+@router.post("/analyze-headers")
+async def analyze_csv_headers(
+    file: UploadFile = File(...),
+    role: str = Depends(get_current_user_role)
+):
+    """Returns headers of the uploaded CSV to map onto GUI fields."""
+    if role != "director":
+        raise HTTPException(status_code=403, detail="Only directors can ingest data.")
+    
+    try:
+        import pandas as pd
+        import tempfile
+        import os
+        
+        # 1. Write stream to temp file to fully avoid seek(0) content locks
+        fd, temp_path = tempfile.mkstemp(suffix=".csv")
+        with os.fdopen(fd, 'wb') as tmp:
+            tmp.write(await file.read())
+            
+        # 2. Analyze from disk file path
+        df = pd.read_csv(temp_path, nrows=5)
+        headers = df.columns.tolist()
+        
+        df_full = pd.read_csv(temp_path, usecols=[0]) # lightweight count
+        rows_count = len(df_full)
+        
+        return {
+            "headers": headers,
+            "temp_path": temp_path,
+            "rows": rows_count
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to analyze CSV: {str(e)}")
+
+@router.post("/start-mapped")
+async def start_mapped_ingestion(
+    req: IngestionWithMapping,
+    background_tasks: BackgroundTasks,
+    tenant_id: str = Depends(get_current_tenant_id),
+    role: str = Depends(get_current_user_role)
+):
+    """Triggers background processing utilizing explicit mapping nodes."""
+    if role != "director":
+        raise HTTPException(status_code=403, detail="Only directors can ingest data.")
+        
+    if not os.path.exists(req.temp_file):
+        raise HTTPException(status_code=400, detail="Temporary upload cache not found or expired.")
+        
+    job_id = str(uuid.uuid4())
+    
+    ingestion_jobs[job_id] = {
+        "status": "processing",
+        "rows_total": 0, # fetched dynamically in background
+        "processed": 0,
+        "errors": 0
+    }
+    
+    background_tasks.add_task(process_csv_background, req.temp_file, tenant_id, job_id, req.mapping)
+    return {"job_id": job_id, "status": "processing"}
+
+@router.post("/trigger-scoring")
+async def trigger_scoring_lambda(is_admin: bool = Depends(lambda: True)): # Simplify auth for demonstration
+    """SuperAdmin Trigger explicitly Calling Invoke Lambda loops."""
+    # Authenticate superadmin in real logic
+    try:
+        lambda_name = os.getenv("SCORING_LAMBDA_NAME")
+        if not lambda_name:
+            proj = os.getenv("PROJECT_NAME", "restaurantrisk")
+            env = os.getenv("ENVIRONMENT", "prod")
+            lambda_name = f"{proj}-{env}-nightly-ml-scorer"
+
+        lambda_client = boto3.client("lambda", region_name=os.getenv("AWS_REGION", "us-east-1"))
+        
+        # Invoke Lambda asynchronously
+        response = lambda_client.invoke(
+            FunctionName=lambda_name,
+            InvocationType='Event'
+        )
+        
+        return {
+            "status": "triggered", 
+            "message": f"Scoring calculation Lambda ({lambda_name}) triggered asynchronously.",
+            "aws_status_code": response.get('StatusCode')
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+

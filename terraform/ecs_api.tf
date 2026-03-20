@@ -96,6 +96,25 @@ resource "aws_iam_role_policy" "ecs_task_cognito" {
   })
 }
 
+resource "aws_iam_role_policy" "ecs_task_lambda" {
+  name = "${var.project_name}-${var.environment}-ecs-lambda-policy"
+  role = aws_iam_role.ecs_task_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "lambda:InvokeFunction"
+        ]
+        Resource = aws_lambda_function.ml_scorer.arn
+      }
+    ]
+  })
+}
+
+
 resource "aws_ecs_task_definition" "api" {
   family                   = "${var.project_name}-${var.environment}-api"
   network_mode             = "awsvpc"
@@ -127,7 +146,8 @@ resource "aws_ecs_task_definition" "api" {
       environment = [
         { name = "DATABASE_URL", value = "postgresql://${var.db_username}:${random_password.db_password.result}@${aws_db_instance.postgres.endpoint}/${aws_db_instance.postgres.db_name}" },
         { name = "COGNITO_USER_POOL_ID", value = aws_cognito_user_pool.main.id },
-        { name = "COGNITO_CLIENT_ID", value = aws_cognito_user_pool_client.nextjs_client.id }
+        { name = "COGNITO_CLIENT_ID", value = aws_cognito_user_pool_client.nextjs_client.id },
+        { name = "SCORING_LAMBDA_NAME", value = "${var.project_name}-${var.environment}-nightly-ml-scorer" }
       ]
     }
   ])
