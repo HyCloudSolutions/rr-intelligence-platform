@@ -23,11 +23,36 @@ from src.models.core import (
     RiskCategory,
     InspectionType,
     InspectionResultOutcome,
+    RiskBand,
 )
+from src.api.middleware.auth import COGNITO_USER_POOL_ID
+
+import boto3
+
+def get_tenant_inspectors(tenant_id: str) -> list:
+    """Fetches real inspector names/email users listed in the Tenant group."""
+    if COGNITO_USER_POOL_ID == "us-east-1_mockpool":
+        return []
+    client = boto3.client("cognito-idp", region_name=os.getenv("AWS_REGION", "us-east-1"))
+    inspector_ids = []
+    try:
+        group = f"Tenant_{tenant_id}_Inspector"
+        response = client.list_users_in_group(UserPoolId=COGNITO_USER_POOL_ID, GroupName=group)
+        for user in response.get("Users", []):
+            attrs = {a["Name"]: a["Value"] for a in user.get("Attributes", [])}
+            sub = attrs.get("sub")
+            if sub:
+                inspector_ids.append(uuid.UUID(sub))
+    except Exception as e:
+        print(f"Warning Cognito group list failed: {e}")
+    return inspector_ids
+
+from src.services.cognito_cache import get_user_map
 
 # ── Constants ────────────────────────────────────────────────────────────────
 LOCAL_TENANT_ID = uuid.UUID("11111111-1111-1111-1111-111111111111")
 MOCK_INSPECTOR_IDS = [uuid.UUID(f"22222222-2222-2222-2222-{str(i).zfill(12)}") for i in range(1, 11)]
+
 
 def parse_risk(risk_str):
     if not isinstance(risk_str, str):
@@ -114,6 +139,14 @@ def seed_chicago_data(db: Session, csv_path="/tmp/chicago_food_inspections.csv",
     
     print(f"Seeding {len(unique_ests)} establishments and {len(df_inspections)} inspections...")
     
+    # Fetch real inspectors from Cognito
+    print("Fetching tenant inspectors from Cognito groups...")
+    inspector_ids = get_tenant_inspectors(str(LOCAL_TENANT_ID))
+            
+    if not inspector_ids:
+        print("⚠️ No inspectors found in Cognito! Falling back to mocks.")
+        inspector_ids = MOCK_INSPECTOR_IDS
+    
     db.query(DailyRiskScore).filter(DailyRiskScore.tenant_id == LOCAL_TENANT_ID).delete()
     db.query(InspectionResult).filter(InspectionResult.tenant_id == LOCAL_TENANT_ID).delete()
     db.query(Establishment).filter(Establishment.tenant_id == LOCAL_TENANT_ID).delete()
@@ -153,6 +186,30 @@ def seed_chicago_data(db: Session, csv_path="/tmp/chicago_food_inspections.csv",
         db.bulk_save_objects(db_ests[i:i + batch_size])
     db.commit()
 
+    # Create DailyRiskScores for Inspector Queue
+    print("Generating DailyRiskScores for prioritized inspector queues...")
+    db_scores = []
+    for license_id, est_id in est_objects.items():
+        score_val = random.uniform(40.0, 98.0)
+        band = RiskBand.HIGH if score_val > 80 else RiskBand.MEDIUM if score_val > 50 else RiskBand.LOW
+        db_scores.append(DailyRiskScore(
+            tenant_id=LOCAL_TENANT_ID,
+            establishment_id=est_id,
+            score_date=datetime.utcnow().date(),
+            risk_score=score_val,
+            risk_band=band,
+            factor_1_name="Historical Inspection Performance",
+            factor_1_weight=50.0,
+            factor_2_name="Facility Type Complexity",
+            factor_2_weight=30.0,
+            factor_3_name="Location Proximity",
+            factor_3_weight=20.0
+        ))
+    
+    for i in range(0, len(db_scores), batch_size):
+        db.bulk_save_objects(db_scores[i:i + batch_size])
+    db.commit()
+
     # Create Inspections
     db_inspections = []
     import random
@@ -171,7 +228,8 @@ def seed_chicago_data(db: Session, csv_path="/tmp/chicago_food_inspections.csv",
         db_inspections.append(InspectionResult(
             tenant_id=LOCAL_TENANT_ID,
             establishment_id=est_id,
-            inspector_id=random.choice(MOCK_INSPECTOR_IDS),
+            inspector_id=random.choice(inspector_ids),
+
             inspection_date=row['Inspection Date'].date(),
             inspection_type=parse_inspection_type(row['Inspection Type']),
             result=outcome,

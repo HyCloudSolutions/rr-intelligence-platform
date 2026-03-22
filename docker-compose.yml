@@ -23,7 +23,7 @@ services:
     ports:
       - "4566:4566"
     environment:
-      - SERVICES=cognito-idp,s3,events
+      - SERVICES=cognito-idp,s3,events,lambda
       - DEBUG=${DEBUG:-0}
 
   backend:
@@ -37,6 +37,7 @@ services:
     environment:
       - DATABASE_URL=postgresql://rr_admin:local_password@db:5432/rr_intelligence
       - COGNITO_USER_POOL_ID=us-east-1_mockpool
+      - SCORING_LAMBDA_NAME=local-scoring-lambda
     depends_on:
       db:
         condition: service_healthy

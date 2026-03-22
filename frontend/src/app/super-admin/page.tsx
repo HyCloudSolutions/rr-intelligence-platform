@@ -28,6 +28,25 @@ export default function SuperAdminDashboard() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    
+    const apiUrl = typeof window !== 'undefined' ? (process.env.NEXT_PUBLIC_API_URL || '/api/backend') : (process.env.INTERNAL_API_URL || 'http://localhost:8000');
+    const [triggering, setTriggering] = useState(false);
+
+    const handleTriggerScoring = async () => {
+        setTriggering(true);
+        try {
+            const res = await fetch(`${apiUrl}/api/v1/ingestion/trigger-scoring`, {
+                method: "POST",
+                headers: { Authorization: `Bearer ${(session as any)?.accessToken}` }
+            });
+            if (!res.ok) throw new Error("Failed to trigger Lambda Scoring");
+            alert("Scoring calculation Lambda triggered successfully.");
+        } catch (e: any) {
+            alert(`Error triggering Lambda: ${e.message}`);
+        } finally {
+            setTriggering(false);
+        }
+    };
 
     useEffect(() => {
         if (status === "unauthenticated") {
@@ -45,7 +64,6 @@ export default function SuperAdminDashboard() {
 
     const fetchTenants = async () => {
         try {
-            const apiUrl = typeof window !== 'undefined' ? (process.env.NEXT_PUBLIC_API_URL || '/api/backend') : (process.env.INTERNAL_API_URL || 'http://localhost:8000');
             const response = await fetch(`${apiUrl}/api/v1/tenants`, {
                 headers: {
                     Authorization: `Bearer ${(session as any).accessToken}`
@@ -105,6 +123,21 @@ export default function SuperAdminDashboard() {
                             Onboard New City
                          </button>
                     </div>
+                </div>
+
+                {/* Global Orchestration / Operations */}
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between">
+                    <div>
+                        <h3 className="font-bold text-slate-800 text-sm">Compute Risk Scores</h3>
+                        <p className="text-xs text-slate-500">Triggers the AWS Lambda schedule for platform-wide risk level recalculations manually.</p>
+                    </div>
+                    <button 
+                        onClick={handleTriggerScoring}
+                        disabled={triggering}
+                        className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-sm transition-all shadow-md shadow-emerald-500/10 active:scale-95 disabled:opacity-50"
+                    >
+                        {triggering ? "Triggering..." : "Trigger Scoring Lambda"}
+                    </button>
                 </div>
 
                 {/* Tenant Management Table */}

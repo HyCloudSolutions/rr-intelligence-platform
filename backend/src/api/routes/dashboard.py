@@ -352,21 +352,17 @@ def get_jurisdiction_summary(
             )
         )
 
-    if not top_establishments:
-        top_establishments = [
-            TopEstablishment(id="1", name="Bob's Burgers", address="123 Ocean Ave", facility_type="Restaurant", risk_score=88.5, risk_band="High", last_inspection="2025-12-15", trend="up", owner="Bob Belcher", last_inspector_name="Sarah Chen"),
-            TopEstablishment(id="2", name="Jimmy Pesto's Pizzeria", address="124 Ocean Ave", facility_type="Restaurant", risk_score=45.2, risk_band="Medium", last_inspection="2025-11-22", trend="stable", owner="Jimmy Pesto", last_inspector_name="Marcus Johnson"),
-        ]
+    # Removed mock fallback that appended Bob's Burgers
 
     # ── 6. Model Accuracy ────────────────────────────────────────
 
     model_accuracy = ModelAccuracy(
-        precision=0.847,
-        recall=0.912,
-        f1_score=0.878,
-        total_predictions=1248,
-        correct_predictions=1058,
-        accuracy_pct=84.8,
+        precision=0.0,
+        recall=0.0,
+        f1_score=0.0,
+        total_predictions=0,
+        correct_predictions=0,
+        accuracy_pct=0.0,
     )
 
     # ── 7. Coverage Metrics ──────────────────────────────────────

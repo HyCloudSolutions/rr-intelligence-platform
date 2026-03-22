@@ -21,7 +21,8 @@ async function getCalendarData(token: string) {
 function generateCalendarHeatmap(totalMonthly: number): { date: string; count: number; weekday: number }[] {
     const today = new Date();
     const days: { date: string; count: number; weekday: number }[] = [];
-    const avgDaily = Math.max(1, Math.round(totalMonthly / 30));
+    const avgDaily = Math.round(totalMonthly / 30);
+
 
     for (let i = 364; i >= 0; i--) {
         const d = new Date(today);
@@ -69,8 +70,9 @@ export default async function ComplianceCalendarPage() {
 
     const data = await getCalendarData(session.accessToken as string);
 
-    const avgMonthly = data?.kpis?.avg_inspections_per_month || 150;
+    const avgMonthly = data?.kpis?.avg_inspections_per_month || 0;
     const calendarDays = generateCalendarHeatmap(avgMonthly);
+
     const maxCount = Math.max(...calendarDays.map(d => d.count), 1);
     const totalYear = calendarDays.reduce((s, d) => s + d.count, 0);
     const activeDays = calendarDays.filter(d => d.count > 0).length;
