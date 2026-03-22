@@ -3,7 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from datetime import datetime, timezone
-from src.api.routes import queue, inspections, dashboard, establishments, ingestion, tenants, users
+from src.api.routes import queue, inspections, dashboard, establishments, ingestion, tenants, users, analytics
+
 from src.db.database import get_db
 
 app = FastAPI(title="RestaurantRisk Intelligence API")
@@ -41,3 +42,5 @@ app.include_router(establishments.router)
 app.include_router(ingestion.router)
 app.include_router(tenants.router)
 app.include_router(users.router)
+app.include_router(analytics.router)
+

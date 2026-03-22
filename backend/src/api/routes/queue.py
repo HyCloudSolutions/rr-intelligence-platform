@@ -7,7 +7,9 @@ from datetime import datetime, date
 from src.db.database import get_db
 from src.models.core import DailyRiskScore, Establishment, InspectionResult, RiskBand, FacilityType
 from src.api.middleware.auth import get_current_tenant_id, get_current_user_role, COGNITO_USER_POOL_ID
+from src.services.routing import get_optimized_route
 from pydantic import BaseModel, Field
+
 import boto3
 import os
 
@@ -58,8 +60,11 @@ class EstablishmentQueueItem(BaseModel):
     license_id: str
     address: str
     facility_type: str
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
     risk_data: RiskScoreResponse
     assigned_inspector: Optional[str] = None
+
 
     class Config:
         from_attributes = True
@@ -194,8 +199,11 @@ def get_daily_queue(
                 license_id=score.establishment.license_id,
                 address=score.establishment.address,
                 facility_type=score.establishment.facility_type.value,
+                latitude=score.establishment.latitude,
+                longitude=score.establishment.longitude,
                 assigned_inspector=assigned_to,
                 risk_data=RiskScoreResponse(
+
                     id=str(score.id),
                     score_date=score.score_date,
                     risk_score=score.risk_score,
@@ -211,3 +219,53 @@ def get_daily_queue(
         )
 
     return response
+
+class RouteRequest(BaseModel):
+    start_lng: float
+    start_lat: float
+    items: List[EstablishmentQueueItem]
+
+@router.post("/route", response_model=List[EstablishmentQueueItem])
+def optimize_queue_route(
+    request: RouteRequest,
+    role: str = Depends(get_current_user_role)
+):
+    """
+    Reorders the provided list of queue items using the Mapbox Optimization API
+    based on the current starting coordinates of the inspector.
+    """
+    if role != "inspector":
+        raise HTTPException(status_code=403, detail="Only inspectors can optimize their route.")
+
+    # Format into list for services.routing
+    waypoints = []
+    for item in request.items:
+        if item.latitude is not None and item.longitude is not None:
+            waypoints.append({
+                "id": item.id,
+                "latitude": item.latitude,
+                "longitude": item.longitude
+            })
+
+    if not waypoints:
+        return request.items # Return re-ordered if no locations or missing coordinates
+
+    sorted_waypoints = get_optimized_route(request.start_lng, request.start_lat, waypoints)
+    
+    # Map back into sorted response items
+    item_map = {item.id: item for item in request.items}
+
+    response_items = []
+    for point in sorted_waypoints:
+        item_id = point['id']
+        if item_id in item_map:
+             response_items.append(item_map[item_id])
+
+    # Append any items that might have been skipped or failed mapping just in case
+    added_ids = {item.id for item in response_items}
+    for item in request.items:
+         if item.id not in added_ids:
+              response_items.append(item)
+
+    return response_items
+

@@ -33,3 +33,10 @@ variable "ml_cron_schedule" {
   type        = string
   default     = "cron(0 2 * * ? *)" # 2:00 AM UTC every day
 }
+
+variable "mapbox_access_token" {
+  description = "Mapbox Access Token for routing optimization"
+  type        = string
+  default     = ""
+}
+

@@ -147,8 +147,10 @@ resource "aws_ecs_task_definition" "api" {
         { name = "DATABASE_URL", value = "postgresql://${var.db_username}:${random_password.db_password.result}@${aws_db_instance.postgres.endpoint}/${aws_db_instance.postgres.db_name}" },
         { name = "COGNITO_USER_POOL_ID", value = aws_cognito_user_pool.main.id },
         { name = "COGNITO_CLIENT_ID", value = aws_cognito_user_pool_client.nextjs_client.id },
-        { name = "SCORING_LAMBDA_NAME", value = "${var.project_name}-${var.environment}-nightly-ml-scorer" }
+        { name = "SCORING_LAMBDA_NAME", value = "${var.project_name}-${var.environment}-nightly-ml-scorer" },
+        { name = "MAPBOX_ACCESS_TOKEN", value = var.mapbox_access_token }
       ]
+
     }
   ])
 }

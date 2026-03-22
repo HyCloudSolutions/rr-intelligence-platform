@@ -2,8 +2,11 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { RiskCard } from "@/components/RiskCard";
 import { OutcomeForm } from "@/components/OutcomeForm";
+import SmartRouteList from "@/components/SmartRouteList";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+
+
 import { getBackendUrl } from "@/lib/backend";
 
 interface QueueItem {
@@ -67,7 +70,11 @@ export default async function InspectorQueuePage() {
                         </div>
 
                         <div className="flex items-center gap-2">
+                            <SmartRouteList items={queue} />
                             {highCount > 0 && (
+
+
+
                                 <span className="px-2.5 py-1 bg-red-50 text-red-600 text-xs font-bold rounded-lg border border-red-100">
                                     {highCount} High
                                 </span>
